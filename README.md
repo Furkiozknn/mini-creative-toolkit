@@ -36,7 +36,7 @@ Bu repo tam tersi bir iddiada bulunuyor: **arka planı silmek, boyutlandırmak, 
 | İddia edilen | Gerçek durum |
 |---|---|
 | "Ücretsiz AI studio" | Genelde ücretli API'ye ince bir kapı |
-| Bu repo | 7 araç tamamen yerel (rembg/Pillow/ffmpeg) + 1 araç gerçekten ücretsiz hosted (Pollinations.ai) |
+| Bu repo | 8 araç tamamen yerel (rembg/Pillow/ffmpeg/opencv) + 1 araç gerçekten ücretsiz hosted (Pollinations.ai) |
 | API key gerekiyor mu? | Hayır — hiçbir araç için |
 | Kredi kartı / hesap? | Hayır |
 | Üretici (generative) model çağrısı? | Sadece `generate_image_free`, ve o da ücretsiz |
@@ -59,6 +59,7 @@ Deterministik işler yerelde kalır; tek üretici (generative) araç ücretsiz h
 | 🎞️ `video_to_gif` | ffmpeg | Clip → optimized GIF (two-pass palette) | local, CPU |
 | ✂️ `video_trim` | ffmpeg | Fast lossless cut, re-encode fallback if needed | local, CPU |
 | 🔍 `upscale_image` | Real-ESRGAN via Vulkan (Upscayl's bundled binary) | Upscales an image | local, **GPU-bound** — see [limitation](#-known-limitation--dürüstlük-testi) |
+| ⚡ `upscale_image_fast` | FSRCNN (OpenCV `dnn_superres`) | Upscales an image, CPU-only, sub-second | local, CPU |
 
 Every tool takes a file path in, returns a file path out (`output/` inside the repo, timestamped). No hidden state, no queue, no polling.
 
@@ -70,7 +71,7 @@ Every tool takes a file path in, returns a file path out (`output/` inside the r
 
 Bu projenin gerçek fikri burada: bir dosya geldiğinde, **ne kadarının gerçekten bir modele ihtiyacı var?** Cevap: neredeyse hiçbiri.
 
-- **7 araç** — `remove_background`, `resize_image`, `convert_format`, `video_thumbnail`, `video_to_gif`, `video_trim`, `upscale_image` — bu makinede, CPU üzerinde, deterministik olarak çalışır. `rembg`, `Pillow`, `ffmpeg` — network gerektirmez (upscale_image'in Vulkan binary'si de yerel çalışır, sadece GPU'ya ihtiyaç duyar).
+- **8 araç** — `remove_background`, `resize_image`, `convert_format`, `video_thumbnail`, `video_to_gif`, `video_trim`, `upscale_image`, `upscale_image_fast` — bu makinede, CPU üzerinde, deterministik olarak çalışır. `rembg`, `Pillow`, `ffmpeg`, `opencv` — network gerektirmez (upscale_image'in Vulkan binary'si de yerel çalışır, sadece GPU'ya ihtiyaç duyar; upscale_image_fast zaten saf CPU).
 - **1 araç** — `generate_image_free` — gerçekten üretici (generative) olduğu için tek başına hosted bir API'ye, Pollinations.ai'ye gider. Ücretsiz, key'siz, kayıtsız.
 - **Hiçbir araç** ücretli bir API'ye gitmez. Bu bir tasarım kararı, bir eksiklik değil — bkz. [Neden var](#-neden-var--the-pitch).
 
@@ -88,10 +89,13 @@ Bu repo, ağır işi ([nvidia-nim-mcp](../cosmos-video)'nin ücretsiz katmanlı 
 
 Vulkan tabanlı upscaling'in etkileşimli olarak kullanılabilir olması için gerçekten ayrı bir GPU gerekiyor. Entegre grafikte:
 
-- **Pratik seçenek**: `generate_image_free` kullan (hosted, saniyeler içinde).
-- **Ya da**: bekle — araç doğru sonucu üretiyor, sadece yavaş.
+- **Pratik seçenek**: `upscale_image_fast` kullan — FSRCNN (OpenCV'nin `dnn_superres` modülü üzerinden, ~40KB'lık önceden eğitilmiş bir model), tamamen CPU'da, tipik olarak **saniyenin çok altında** çalışır. Real-ESRGAN'ın halüsinasyon kalitesinde detay/doku üretme yeteneği yok — ama düz Lanczos resize'dan (`resize_image`) belirgin şekilde daha keskin kenarlar üretiyor, gerçek bir süper-çözünürlük modeli. Araştırma ve karşılaştırma (Lanczos'a karşı kenar keskinliği, wall-clock süre) için bkz. bu araştırmanın notları.
+- **Ya da**: `generate_image_free` kullan (hosted, saniyeler içinde, ama bu üretici bir model — orijinal görseli değil yeni bir görsel üretir).
+- **Ya da**: bekle — `upscale_image` doğru sonucu üretiyor, sadece yavaş.
 
 Bu sınır kasıtlı olarak gizlenmiyor veya yumuşatılmıyor: `toolkit.py` içindeki `upscale_image` docstring'i bunu birebir söylüyor, `PROJECT.md` bunu kapsam dışı bırakıyor, ve bu README onu ilk sayfada tutuyor. Şeffaflık burada bug değil, özellik.
+
+`upscale_image_fast`'in FSRCNN ağırlıkları [Saafke/FSRCNN_Tensorflow](https://github.com/Saafke/FSRCNN_Tensorflow) reposundan alındı — OpenCV'nin kendi `dnn_superres` GSoC projesi kapsamında üretilen, OpenCV'nin resmi dokümantasyonunda da referans gösterilen ağırlıklar (Dong et al., ["Accelerating the Super-Resolution Convolutional Neural Network"](https://arxiv.org/abs/1608.00367)).
 
 ---
 
@@ -101,7 +105,7 @@ Bu sınır kasıtlı olarak gizlenmiyor veya yumuşatılmıyor: `toolkit.py` iç
 uv sync
 ```
 
-Bu, `rembg`, `Pillow`, `httpx`, `mcp[cli]` gibi tüm bağımlılıkları kurar. `ffmpeg`/`ffprobe` sistemde kurulu olmalı (PATH'te). `upscale_image` için ayrıca Upscayl'in bundled binary/modellerine ihtiyaç var (repo içinde `toolkit.py`'de yolu tanımlı).
+Bu, `rembg`, `Pillow`, `httpx`, `mcp[cli]`, `opencv-contrib-python` gibi tüm bağımlılıkları kurar. `ffmpeg`/`ffprobe` sistemde kurulu olmalı (PATH'te). `upscale_image` için ayrıca Upscayl'in bundled binary/modellerine ihtiyaç var (repo içinde `toolkit.py`'de yolu tanımlı). `upscale_image_fast` için gereken FSRCNN ağırlıkları (`models/FSRCNN_x{2,3,4}.pb`, toplam ~120KB) repo'ya dahil — ekstra kurulum gerekmiyor.
 
 ## ✅ Running the tests
 
@@ -111,7 +115,7 @@ Her araç, gerçek üretilmiş fixture'lara karşı uçtan uca test edilir — m
 uv run pytest
 ```
 
-`test_toolkit.py` şunları doğrular: aspect-ratio korumalı/korumasız resize, boyut validasyonu, eksik dosya hataları, JPEG için alfa düzleştirme, `remove_background`'ın gerçekten RGBA ürettiği, video thumbnail/GIF/trim'in beklenen çıktı ve süreleri, ve GIF üretiminin ara palet dosyasını temizlediği.
+`test_toolkit.py` şunları doğrular: aspect-ratio korumalı/korumasız resize, boyut validasyonu, eksik dosya hataları, JPEG için alfa düzleştirme, `remove_background`'ın gerçekten RGBA ürettiği, `upscale_image_fast`'in doğru ölçekte çıktı ürettiği ve geçersiz scale/dosya değerlerini reddettiği, video thumbnail/GIF/trim'in beklenen çıktı ve süreleri, ve GIF üretiminin ara palet dosyasını temizlediği.
 
 ## 🔌 Registering as an MCP server
 
@@ -119,19 +123,21 @@ uv run pytest
 claude mcp add --transport stdio mini-creative-toolkit -- uv run --project /path/to/this/repo toolkit.py
 ```
 
-Proje veya kullanıcı scope'unda kaydedilebilir. Kayıttan sonra 8 araç da (`generate_image_free`, `remove_background`, `resize_image`, `convert_format`, `video_thumbnail`, `video_to_gif`, `video_trim`, `upscale_image`) doğrudan çağrılabilir hale gelir.
+Proje veya kullanıcı scope'unda kaydedilebilir. Kayıttan sonra 9 araç da (`generate_image_free`, `remove_background`, `resize_image`, `convert_format`, `video_thumbnail`, `video_to_gif`, `video_trim`, `upscale_image`, `upscale_image_fast`) doğrudan çağrılabilir hale gelir.
 
 ## 📁 Project layout
 
 ```
 mini-creative-toolkit/
-├── toolkit.py          # MCP server + all 8 tools
+├── toolkit.py          # MCP server + all 9 tools
 ├── test_toolkit.py      # end-to-end tests, real fixtures, no mocks
 ├── PROJECT.md            # scope, stack, definition of done
+├── models/
+│   └── FSRCNN_x{2,3,4}.pb # pretrained weights for upscale_image_fast (~40KB each)
 ├── assets/
 │   ├── banner.svg         # hero banner
 │   ├── routing.svg        # local-vs-hosted routing diagram
-│   ├── tools-grid.svg     # 8-tool icon grid
+│   ├── tools-grid.svg     # tool icon grid
 │   └── limitation.svg     # upscale_image honesty panel
 └── output/                # generated files land here (timestamped)
 ```

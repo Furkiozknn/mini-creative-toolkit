@@ -9,6 +9,7 @@ from toolkit import (
     convert_format,
     remove_background,
     resize_image,
+    upscale_image_fast,
     video_thumbnail,
     video_to_gif,
     video_trim,
@@ -61,6 +62,23 @@ def test_convert_format_flattens_transparency_for_jpeg(sample_image):
     assert out.suffix == ".jpg"
     with Image.open(out) as img:
         assert img.mode == "RGB"
+
+
+def test_upscale_image_fast_scales_up(sample_image):
+    out = Path(upscale_image_fast(str(sample_image), scale=4))
+    assert out.exists()
+    with Image.open(out) as img:
+        assert img.size == (256, 256)  # 64x64 source * 4
+
+
+def test_upscale_image_fast_rejects_unsupported_scale(sample_image):
+    with pytest.raises(ValueError):
+        upscale_image_fast(str(sample_image), scale=5)
+
+
+def test_upscale_image_fast_missing_file_raises():
+    with pytest.raises(FileNotFoundError):
+        upscale_image_fast(str(OUTPUT_DIR / "does-not-exist.png"))
 
 
 def test_remove_background_produces_rgba_png(sample_image):

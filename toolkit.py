@@ -70,7 +70,7 @@ UPSCAYL_MODELS = Path(r"C:\Users\furki\Desktop\Claude projeler\upscayl\resources
 
 @mcp.tool()
 def upscale_image(image_path: str, scale: int = 4, model: str = "upscayl-standard-4x") -> str:
-    """Upscale an image with real-ESRGAN via Vulkan (reuses Upscayl's bundled binary/models). Tested and confirmed CORRECTLY SLOW to the point of impracticality on Intel integrated graphics (minutes for a single small icon) - only use this if the machine has a real discrete GPU; otherwise prefer generate_image_free or accept the wait."""
+    """Upscale an image with real-ESRGAN via Vulkan (reuses Upscayl's bundled binary/models). Tested and confirmed CORRECTLY SLOW to the point of impracticality on Intel integrated graphics (minutes for a single small icon) - only use this if the machine has a real discrete GPU. Otherwise prefer upscale_image_fast (CPU, sub-second, meaningfully better than plain resize) or accept the wait."""
     src = Path(image_path)
     if not src.exists():
         raise FileNotFoundError(f"No such file: {image_path}")
@@ -86,6 +86,43 @@ def upscale_image(image_path: str, scale: int = 4, model: str = "upscayl-standar
     if result.returncode != 0:
         raise RuntimeError(f"upscayl-bin failed: {result.stderr[-1500:]}")
     logger.info("Upscaled %s (%dx, %s) -> %s", src, scale, model, out_path)
+    return str(out_path)
+
+
+FSRCNN_MODELS = {
+    2: Path(__file__).parent / "models" / "FSRCNN_x2.pb",
+    3: Path(__file__).parent / "models" / "FSRCNN_x3.pb",
+    4: Path(__file__).parent / "models" / "FSRCNN_x4.pb",
+}
+
+
+@mcp.tool()
+def upscale_image_fast(image_path: str, scale: int = 4) -> str:
+    """Upscale an image with FSRCNN, a small pretrained CNN (~40KB, OpenCV's dnn_superres) - runs in well under a second on CPU, no GPU/Vulkan involved. This is the practical default on machines without a discrete GPU: meaningfully sharper edges than plain Lanczos resize, at roughly the speed of resize_image. It is NOT Real-ESRGAN quality (no hallucinated detail/texture) - for that, use upscale_image if you have a discrete GPU and can wait. Supports scale 2, 3, or 4."""
+    import cv2
+
+    src = Path(image_path)
+    if not src.exists():
+        raise FileNotFoundError(f"No such file: {image_path}")
+    if scale not in FSRCNN_MODELS:
+        raise ValueError(f"scale must be one of {sorted(FSRCNN_MODELS)}, got {scale}")
+
+    model_path = FSRCNN_MODELS[scale]
+    if not model_path.exists():
+        raise FileNotFoundError(f"FSRCNN model not found at {model_path} - expected to ship in the repo's models/ dir")
+
+    img = cv2.imread(str(src))
+    if img is None:
+        raise ValueError(f"Could not read image (unsupported format or corrupt file): {image_path}")
+
+    sr = cv2.dnn_superres.DnnSuperResImpl_create()
+    sr.readModel(str(model_path))
+    sr.setModel("fsrcnn", scale)
+    result = sr.upsample(img)
+
+    out_path = _stamp("upscaled-fast", "png")
+    cv2.imwrite(str(out_path), result)
+    logger.info("Fast-upscaled %s (%dx, FSRCNN) -> %s", src, scale, out_path)
     return str(out_path)
 
 
