@@ -31,6 +31,21 @@ def _run_ffmpeg(args: list[str]) -> None:
         raise RuntimeError(f"ffmpeg failed: {result.stderr[-1500:]}")
 
 
+def _probe_duration(path: Path) -> float:
+    result = subprocess.run(
+        ["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", str(path)],
+        capture_output=True,
+        text=True,
+    )
+    return float(result.stdout.strip())
+
+
+def _require_positive(**kwargs) -> None:
+    for name, value in kwargs.items():
+        if value <= 0:
+            raise ValueError(f"{name} must be > 0, got {value}")
+
+
 @mcp.tool()
 def generate_image_free(prompt: str, width: int = 1024, height: int = 1024, seed: int | None = None) -> str:
     """Generate an image from a text prompt via Pollinations.ai - genuinely free, no API key or signup required."""
@@ -98,13 +113,14 @@ def resize_image(image_path: str, width: int, height: int, keep_aspect: bool = T
     src = Path(image_path)
     if not src.exists():
         raise FileNotFoundError(f"No such file: {image_path}")
+    _require_positive(width=width, height=height)
 
-    img = Image.open(src)
-    if keep_aspect:
-        img = img.copy()
-        img.thumbnail((width, height), Image.LANCZOS)
-    else:
-        img = img.resize((width, height), Image.LANCZOS)
+    with Image.open(src) as opened:
+        if keep_aspect:
+            img = opened.copy()
+            img.thumbnail((width, height), Image.LANCZOS)
+        else:
+            img = opened.resize((width, height), Image.LANCZOS)
 
     out_path = _stamp("resized", src.suffix.lstrip(".") or "png")
     img.save(out_path)
@@ -123,11 +139,13 @@ def convert_format(image_path: str, target_format: str) -> str:
     if fmt == "jpg":
         fmt = "jpeg"
 
-    img = Image.open(src)
-    if fmt == "jpeg" and img.mode in ("RGBA", "LA", "P"):
-        bg = Image.new("RGB", img.size, (255, 255, 255))
-        bg.paste(img.convert("RGBA"), mask=img.convert("RGBA").split()[-1])
-        img = bg
+    with Image.open(src) as opened:
+        if fmt == "jpeg" and opened.mode in ("RGBA", "LA", "P"):
+            rgba = opened.convert("RGBA")
+            img = Image.new("RGB", opened.size, (255, 255, 255))
+            img.paste(rgba, mask=rgba.split()[-1])
+        else:
+            img = opened.copy()
 
     ext = "jpg" if fmt == "jpeg" else fmt
     out_path = _stamp("converted", ext)
@@ -155,17 +173,20 @@ def video_to_gif(video_path: str, start: str = "00:00:00", duration: float = 3.0
     src = Path(video_path)
     if not src.exists():
         raise FileNotFoundError(f"No such file: {video_path}")
+    _require_positive(duration=duration, fps=fps, width=width)
 
     palette = _stamp("palette", "png")
     out_path = _stamp("clip", "gif")
     scale = f"fps={fps},scale={width}:-1:flags=lanczos"
 
-    _run_ffmpeg(["-ss", start, "-t", str(duration), "-i", str(src), "-vf", f"{scale},palettegen", str(palette)])
-    _run_ffmpeg([
-        "-ss", start, "-t", str(duration), "-i", str(src), "-i", str(palette),
-        "-lavfi", f"{scale}[x];[x][1:v]paletteuse", str(out_path),
-    ])
-    palette.unlink(missing_ok=True)
+    try:
+        _run_ffmpeg(["-ss", start, "-t", str(duration), "-i", str(src), "-vf", f"{scale},palettegen", str(palette)])
+        _run_ffmpeg([
+            "-ss", start, "-t", str(duration), "-i", str(src), "-i", str(palette),
+            "-lavfi", f"{scale}[x];[x][1:v]paletteuse", str(out_path),
+        ])
+    finally:
+        palette.unlink(missing_ok=True)
     logger.info("GIF from %s [%s, %ss] -> %s", src, start, duration, out_path)
     return str(out_path)
 
@@ -176,13 +197,23 @@ def video_trim(video_path: str, start: str, duration: float) -> str:
     src = Path(video_path)
     if not src.exists():
         raise FileNotFoundError(f"No such file: {video_path}")
+    _require_positive(duration=duration)
 
     out_path = _stamp("trimmed", src.suffix.lstrip(".") or "mp4")
+    copy_args = ["-ss", start, "-i", str(src), "-t", str(duration), "-c", "copy", str(out_path)]
+    reencode_args = ["-ss", start, "-i", str(src), "-t", str(duration), str(out_path)]
+
+    needs_reencode = True
     try:
-        _run_ffmpeg(["-ss", start, "-i", str(src), "-t", str(duration), "-c", "copy", str(out_path)])
-    except RuntimeError:
-        # stream copy can fail to land on a keyframe boundary; re-encode as a fallback
-        _run_ffmpeg(["-ss", start, "-i", str(src), "-t", str(duration), str(out_path)])
+        _run_ffmpeg(copy_args)
+        # -c copy can exit 0 but land off the nearest keyframe instead of erroring,
+        # producing a clip noticeably shorter than requested - check the real output.
+        needs_reencode = _probe_duration(out_path) < duration * 0.9
+    except (RuntimeError, ValueError):
+        needs_reencode = True
+
+    if needs_reencode:
+        _run_ffmpeg(reencode_args)
     logger.info("Trimmed %s [%s, %ss] -> %s", src, start, duration, out_path)
     return str(out_path)
 
