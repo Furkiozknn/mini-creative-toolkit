@@ -49,6 +49,31 @@ def generate_image_free(prompt: str, width: int = 1024, height: int = 1024, seed
     return str(out_path)
 
 
+UPSCAYL_BIN = Path(r"C:\Users\furki\Desktop\Claude projeler\upscayl\resources\win\bin\upscayl-bin.exe")
+UPSCAYL_MODELS = Path(r"C:\Users\furki\Desktop\Claude projeler\upscayl\resources\models")
+
+
+@mcp.tool()
+def upscale_image(image_path: str, scale: int = 4, model: str = "upscayl-standard-4x") -> str:
+    """Upscale an image with real-ESRGAN via Vulkan (reuses Upscayl's bundled binary/models). Tested and confirmed CORRECTLY SLOW to the point of impracticality on Intel integrated graphics (minutes for a single small icon) - only use this if the machine has a real discrete GPU; otherwise prefer generate_image_free or accept the wait."""
+    src = Path(image_path)
+    if not src.exists():
+        raise FileNotFoundError(f"No such file: {image_path}")
+    if not UPSCAYL_BIN.exists():
+        raise FileNotFoundError(f"Upscayl binary not found at {UPSCAYL_BIN} - clone/build the upscayl repo first")
+
+    out_path = _stamp("upscaled", "png")
+    result = subprocess.run(
+        [str(UPSCAYL_BIN), "-i", str(src), "-o", str(out_path), "-m", str(UPSCAYL_MODELS), "-n", model, "-s", str(scale)],
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode != 0:
+        raise RuntimeError(f"upscayl-bin failed: {result.stderr[-1500:]}")
+    logger.info("Upscaled %s (%dx, %s) -> %s", src, scale, model, out_path)
+    return str(out_path)
+
+
 @mcp.tool()
 def remove_background(image_path: str) -> str:
     """Remove the background from an image, saved as a transparent PNG. CPU-only (ONNX via rembg), no API key or GPU needed."""

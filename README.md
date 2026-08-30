@@ -17,6 +17,11 @@ Built as the deterministic complement to [nvidia-nim-mcp](../cosmos-video): gene
 | 🎬 `video_thumbnail` | Grab a single frame from a video |
 | 🎞️ `video_to_gif` | Clip → optimized GIF (two-pass palette) |
 | ✂️ `video_trim` | Fast lossless cut (falls back to re-encode if needed) |
+| 🔍 `upscale_image` | Real-ESRGAN via Vulkan, reusing Upscayl's bundled binary/models — see limitation below |
+
+## ⚠️ Known limitation
+
+`upscale_image` is real and correct, but was tested on this machine's Intel UHD (integrated, no discrete GPU) and confirmed impractically slow — a single small icon didn't finish in 7+ minutes (32% progress). Vulkan-based upscaling genuinely needs a discrete GPU to be usable interactively; on integrated graphics, `generate_image_free` is the practical choice instead.
 
 ## ⚙️ Setup
 
