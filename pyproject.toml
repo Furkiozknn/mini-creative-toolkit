@@ -1,0 +1,11 @@
+[project]
+name = "mini-creative-toolkit"
+version = "0.1.0"
+description = "Local, CPU-only image/video utilities (bg removal, resize, thumbnails, gifs) as an MCP server - no API keys, no GPU, no paid dependency"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "rembg[cpu]>=2.0.65",
+    "pillow>=11.0.0",
+    "mcp[cli]>=2.0.0",
+]

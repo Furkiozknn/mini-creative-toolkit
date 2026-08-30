@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 320" width="1200" height="320">
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="40%" r="80%">
+      <stop offset="0%" stop-color="#1a1408"/>
+      <stop offset="60%" stop-color="#120e07"/>
+      <stop offset="100%" stop-color="#0a0704"/>
+    </radialGradient>
+    <linearGradient id="title" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#ffd76d"/>
+      <stop offset="55%" stop-color="#ff9f5a"/>
+      <stop offset="100%" stop-color="#8effc2"/>
+    </linearGradient>
+    <filter id="glow" x="-80%" y="-80%" width="260%" height="260%">
+      <feGaussianBlur stdDeviation="7" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+
+  <rect width="1200" height="320" fill="url(#bg)"/>
+
+  <!-- pipeline motif: image -> wrench -> clip -->
+  <g stroke="#ffd76d" stroke-width="2.5" fill="none" opacity="0.55" filter="url(#glow)">
+    <line x1="130" y1="150" x2="230" y2="150"/>
+    <line x1="1070" y1="150" x2="970" y2="150"/>
+  </g>
+  <g fill="none" stroke="#ffd76d" stroke-width="3.5" filter="url(#glow)">
+    <rect x="80" y="115" width="70" height="70" rx="10"/>
+    <circle cx="1120" cy="150" r="35"/>
+  </g>
+
+  <text x="600" y="150" text-anchor="middle" font-family="'Cascadia Code', 'Consolas', monospace" font-weight="700" font-size="56" fill="url(#title)" letter-spacing="1">mini-creative-toolkit</text>
+
+  <text x="600" y="192" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="18" fill="#e8ddc8" opacity="0.85">Local CPU-only image/video utilities as an MCP server — no API keys, no GPU, no paid dependency</text>
+
+  <text x="600" y="255" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="22" fill="#f5efe0" opacity="0.95">🖼️ Remove BG &#160;&#160;&#160; 📐 Resize &#160;&#160;&#160; 🔄 Convert &#160;&#160;&#160; 🎬 Thumbnail &#160;&#160;&#160; 🎞️ GIF &#160;&#160;&#160; ✂️ Trim</text>
+</svg>
