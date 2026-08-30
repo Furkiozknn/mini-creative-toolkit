@@ -29,6 +29,12 @@ Built as the deterministic complement to [nvidia-nim-mcp](../cosmos-video): gene
 uv sync
 ```
 
+Run the test suite (each tool tested end-to-end against real generated fixtures, no mocks):
+
+```bash
+uv run pytest
+```
+
 Register it as an MCP server (project or user scope):
 
 ```bash
