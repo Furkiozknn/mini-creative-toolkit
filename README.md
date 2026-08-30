@@ -10,6 +10,7 @@ Built as the deterministic complement to [nvidia-nim-mcp](../cosmos-video): gene
 
 | Tool | Does |
 |---|---|
+| ✨ `generate_image_free` | Text-to-image via [Pollinations.ai](https://pollinations.ai) — genuinely free, no signup or API key |
 | 🖼️ `remove_background` | Cuts out the subject, transparent PNG (ONNX via `rembg`, CPU-only) |
 | 📐 `resize_image` | High-quality Lanczos resize/fit |
 | 🔄 `convert_format` | PNG ⇄ JPG ⇄ WebP |

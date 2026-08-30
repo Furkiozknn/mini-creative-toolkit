@@ -1,8 +1,10 @@
 import logging
 import subprocess
+import urllib.parse
 from datetime import datetime
 from pathlib import Path
 
+import httpx
 from mcp.server import MCPServer
 from PIL import Image
 
@@ -27,6 +29,24 @@ def _run_ffmpeg(args: list[str]) -> None:
     )
     if result.returncode != 0:
         raise RuntimeError(f"ffmpeg failed: {result.stderr[-1500:]}")
+
+
+@mcp.tool()
+def generate_image_free(prompt: str, width: int = 1024, height: int = 1024, seed: int | None = None) -> str:
+    """Generate an image from a text prompt via Pollinations.ai - genuinely free, no API key or signup required."""
+    encoded = urllib.parse.quote(prompt)
+    url = f"https://image.pollinations.ai/prompt/{encoded}"
+    params = {"width": width, "height": height, "nologo": "true"}
+    if seed is not None:
+        params["seed"] = seed
+
+    response = httpx.get(url, params=params, timeout=60.0, follow_redirects=True)
+    response.raise_for_status()
+
+    out_path = _stamp("generated", "jpg")
+    out_path.write_bytes(response.content)
+    logger.info("Generated image for %r -> %s", prompt, out_path)
+    return str(out_path)
 
 
 @mcp.tool()
