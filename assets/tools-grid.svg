@@ -1,0 +1,162 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 620" width="1200" height="620">
+  <defs>
+    <radialGradient id="tbg" cx="50%" cy="30%" r="90%">
+      <stop offset="0%" stop-color="#1a1408"/>
+      <stop offset="60%" stop-color="#120e07"/>
+      <stop offset="100%" stop-color="#0a0704"/>
+    </radialGradient>
+    <linearGradient id="ttitle" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#ffd76d"/>
+      <stop offset="55%" stop-color="#ff9f5a"/>
+      <stop offset="100%" stop-color="#8effc2"/>
+    </linearGradient>
+    <linearGradient id="cardEdge" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ffd76d" stop-opacity="0.9"/>
+      <stop offset="100%" stop-color="#8effc2" stop-opacity="0.5"/>
+    </linearGradient>
+    <linearGradient id="cardEdgeWarn" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ff9f5a" stop-opacity="0.95"/>
+      <stop offset="100%" stop-color="#ff6b6b" stop-opacity="0.6"/>
+    </linearGradient>
+    <filter id="tglow" x="-80%" y="-80%" width="260%" height="260%">
+      <feGaussianBlur stdDeviation="4" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+
+  <rect width="1200" height="620" fill="url(#tbg)"/>
+  <text x="600" y="50" text-anchor="middle" font-family="'Cascadia Code','Consolas',monospace" font-weight="700" font-size="28" fill="url(#ttitle)">the toolbox</text>
+  <text x="600" y="76" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="14" fill="#e8ddc8" opacity="0.8">8 MCP tools · one call each, real files in / real files out</text>
+
+  <!-- card template positions: 4 cols x 2 rows -->
+  <!-- col x: 30,315,600,885  card width 270  row y: 110, 355  card height 220 gap 25 -->
+
+  <!-- 1: generate_image_free -->
+  <g transform="translate(30,110)">
+    <rect width="270" height="220" rx="16" fill="#1f1810" stroke="url(#cardEdgeWarn)" stroke-width="2" filter="url(#tglow)"/>
+    <g transform="translate(135,66)" filter="url(#tglow)">
+      <path d="M0,-30 L8,-8 L30,0 L8,8 L0,30 L-8,8 L-30,0 L-8,-8 Z" fill="none" stroke="#ffd76d" stroke-width="3"/>
+      <circle cx="26" cy="-26" r="5" fill="#ff9f5a"/>
+    </g>
+    <text x="135" y="128" text-anchor="middle" font-family="'Cascadia Code','Consolas',monospace" font-size="15" font-weight="700" fill="#ffd76d">generate_image_free</text>
+    <text x="135" y="152" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="11" fill="#e8ddc8">Pollinations.ai · text → image</text>
+    <text x="135" y="170" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="11" fill="#e8ddc8">free, no signup, no key</text>
+    <text x="135" y="198" text-anchor="middle" font-family="'Cascadia Code','Consolas',monospace" font-size="10" fill="#ff9f5a">hosted · the one exception</text>
+  </g>
+
+  <!-- 2: remove_background -->
+  <g transform="translate(315,110)">
+    <rect width="270" height="220" rx="16" fill="#0f1c0f" stroke="url(#cardEdge)" stroke-width="2" filter="url(#tglow)"/>
+    <g transform="translate(135,66)">
+      <g opacity="0.5">
+        <rect x="-28" y="-28" width="14" height="14" fill="#2a2018"/>
+        <rect x="-14" y="-14" width="14" height="14" fill="#2a2018"/>
+        <rect x="0" y="-28" width="14" height="14" fill="#2a2018"/>
+        <rect x="14" y="-14" width="14" height="14" fill="#2a2018"/>
+        <rect x="-28" y="0" width="14" height="14" fill="#2a2018"/>
+        <rect x="0" y="0" width="14" height="14" fill="#2a2018"/>
+        <rect x="14" y="14" width="14" height="14" fill="#2a2018"/>
+        <rect x="-14" y="14" width="14" height="14" fill="#2a2018"/>
+      </g>
+      <circle cx="0" cy="-8" r="12" fill="none" stroke="#8effc2" stroke-width="3" filter="url(#tglow)"/>
+      <path d="M-16,26 Q0,-2 16,26 Z" fill="none" stroke="#8effc2" stroke-width="3" filter="url(#tglow)"/>
+    </g>
+    <text x="135" y="128" text-anchor="middle" font-family="'Cascadia Code','Consolas',monospace" font-size="15" font-weight="700" fill="#8effc2">remove_background</text>
+    <text x="135" y="152" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="11" fill="#e8ddc8">rembg (ONNX) · transparent PNG</text>
+    <text x="135" y="170" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="11" fill="#e8ddc8">CPU only</text>
+    <text x="135" y="198" text-anchor="middle" font-family="'Cascadia Code','Consolas',monospace" font-size="10" fill="#5fd9a0">local · instant</text>
+  </g>
+
+  <!-- 3: resize_image -->
+  <g transform="translate(600,110)">
+    <rect width="270" height="220" rx="16" fill="#0f1c0f" stroke="url(#cardEdge)" stroke-width="2" filter="url(#tglow)"/>
+    <g transform="translate(135,66)">
+      <rect x="-26" y="-20" width="52" height="40" rx="3" fill="none" stroke="#8effc2" stroke-width="3" filter="url(#tglow)"/>
+      <rect x="6" y="4" width="26" height="20" rx="2" fill="none" stroke="#ffd76d" stroke-width="2.5" stroke-dasharray="3 3"/>
+      <path d="M22,20 L34,32 M34,32 L26,32 M34,32 L34,24" fill="none" stroke="#ffd76d" stroke-width="2.5"/>
+    </g>
+    <text x="135" y="128" text-anchor="middle" font-family="'Cascadia Code','Consolas',monospace" font-size="15" font-weight="700" fill="#8effc2">resize_image</text>
+    <text x="135" y="152" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="11" fill="#e8ddc8">Pillow · Lanczos resample</text>
+    <text x="135" y="170" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="11" fill="#e8ddc8">fit or exact size</text>
+    <text x="135" y="198" text-anchor="middle" font-family="'Cascadia Code','Consolas',monospace" font-size="10" fill="#5fd9a0">local · instant</text>
+  </g>
+
+  <!-- 4: convert_format -->
+  <g transform="translate(885,110)">
+    <rect width="270" height="220" rx="16" fill="#0f1c0f" stroke="url(#cardEdge)" stroke-width="2" filter="url(#tglow)"/>
+    <g transform="translate(135,66)">
+      <rect x="-34" y="-20" width="26" height="34" rx="3" fill="none" stroke="#8effc2" stroke-width="2.5"/>
+      <path d="M-27,-13 h12 M-27,-5 h12 M-27,3 h8" stroke="#8effc2" stroke-width="1.6"/>
+      <path d="M-4,-3 L10,-3 M10,-3 L5,-8 M10,-3 L5,2" fill="none" stroke="#ffd76d" stroke-width="2.5" filter="url(#tglow)"/>
+      <rect x="14" y="-14" width="26" height="34" rx="3" fill="none" stroke="#ffd76d" stroke-width="2.5"/>
+      <path d="M21,-7 h12 M21,1 h12 M21,9 h8" stroke="#ffd76d" stroke-width="1.6"/>
+    </g>
+    <text x="135" y="128" text-anchor="middle" font-family="'Cascadia Code','Consolas',monospace" font-size="15" font-weight="700" fill="#8effc2">convert_format</text>
+    <text x="135" y="152" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="11" fill="#e8ddc8">Pillow · PNG ⇄ JPG ⇄ WebP</text>
+    <text x="135" y="170" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="11" fill="#e8ddc8">flattens alpha for JPEG</text>
+    <text x="135" y="198" text-anchor="middle" font-family="'Cascadia Code','Consolas',monospace" font-size="10" fill="#5fd9a0">local · instant</text>
+  </g>
+
+  <!-- 5: video_thumbnail -->
+  <g transform="translate(30,355)">
+    <rect width="270" height="220" rx="16" fill="#0f1c0f" stroke="url(#cardEdge)" stroke-width="2" filter="url(#tglow)"/>
+    <g transform="translate(135,66)">
+      <rect x="-30" y="-20" width="60" height="40" rx="4" fill="none" stroke="#8effc2" stroke-width="3" filter="url(#tglow)"/>
+      <path d="M-8,-10 L14,0 L-8,10 Z" fill="#8effc2"/>
+    </g>
+    <text x="135" y="128" text-anchor="middle" font-family="'Cascadia Code','Consolas',monospace" font-size="15" font-weight="700" fill="#8effc2">video_thumbnail</text>
+    <text x="135" y="152" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="11" fill="#e8ddc8">ffmpeg · single frame grab</text>
+    <text x="135" y="170" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="11" fill="#e8ddc8">any timestamp</text>
+    <text x="135" y="198" text-anchor="middle" font-family="'Cascadia Code','Consolas',monospace" font-size="10" fill="#5fd9a0">local · instant</text>
+  </g>
+
+  <!-- 6: video_to_gif -->
+  <g transform="translate(315,355)">
+    <rect width="270" height="220" rx="16" fill="#0f1c0f" stroke="url(#cardEdge)" stroke-width="2" filter="url(#tglow)"/>
+    <g transform="translate(135,66)">
+      <rect x="-32" y="-16" width="64" height="32" rx="3" fill="none" stroke="#8effc2" stroke-width="2.5" filter="url(#tglow)"/>
+      <g fill="#8effc2">
+        <circle cx="-26" cy="-16" r="2"/><circle cx="-26" cy="16" r="2"/>
+        <circle cx="-12" cy="-16" r="2"/><circle cx="-12" cy="16" r="2"/>
+        <circle cx="2" cy="-16" r="2"/><circle cx="2" cy="16" r="2"/>
+        <circle cx="16" cy="-16" r="2"/><circle cx="16" cy="16" r="2"/>
+        <circle cx="30" cy="-16" r="2"/><circle cx="30" cy="16" r="2"/>
+      </g>
+      <text x="0" y="6" text-anchor="middle" font-family="'Cascadia Code','Consolas',monospace" font-size="13" font-weight="700" fill="#ffd76d">GIF</text>
+    </g>
+    <text x="135" y="128" text-anchor="middle" font-family="'Cascadia Code','Consolas',monospace" font-size="15" font-weight="700" fill="#8effc2">video_to_gif</text>
+    <text x="135" y="152" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="11" fill="#e8ddc8">ffmpeg · two-pass palette</text>
+    <text x="135" y="170" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="11" fill="#e8ddc8">clip → optimized GIF</text>
+    <text x="135" y="198" text-anchor="middle" font-family="'Cascadia Code','Consolas',monospace" font-size="10" fill="#5fd9a0">local · seconds</text>
+  </g>
+
+  <!-- 7: video_trim -->
+  <g transform="translate(600,355)">
+    <rect width="270" height="220" rx="16" fill="#0f1c0f" stroke="url(#cardEdge)" stroke-width="2" filter="url(#tglow)"/>
+    <g transform="translate(135,66)">
+      <line x1="-32" y1="0" x2="32" y2="0" stroke="#8effc2" stroke-width="3" filter="url(#tglow)"/>
+      <line x1="-10" y1="-12" x2="-10" y2="12" stroke="#ffd76d" stroke-width="3"/>
+      <line x1="12" y1="-12" x2="12" y2="12" stroke="#ffd76d" stroke-width="3"/>
+      <path d="M-10,-12 L-16,-18 M-10,12 L-16,18" stroke="#ffd76d" stroke-width="2"/>
+      <path d="M12,-12 L18,-18 M12,12 L18,18" stroke="#ffd76d" stroke-width="2"/>
+    </g>
+    <text x="135" y="128" text-anchor="middle" font-family="'Cascadia Code','Consolas',monospace" font-size="15" font-weight="700" fill="#8effc2">video_trim</text>
+    <text x="135" y="152" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="11" fill="#e8ddc8">ffmpeg · keyframe-fast cut</text>
+    <text x="135" y="170" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="11" fill="#e8ddc8">re-encode fallback if needed</text>
+    <text x="135" y="198" text-anchor="middle" font-family="'Cascadia Code','Consolas',monospace" font-size="10" fill="#5fd9a0">local · fast</text>
+  </g>
+
+  <!-- 8: upscale_image -->
+  <g transform="translate(885,355)">
+    <rect width="270" height="220" rx="16" fill="#241812" stroke="url(#cardEdgeWarn)" stroke-width="2" filter="url(#tglow)"/>
+    <g transform="translate(135,66)">
+      <rect x="-24" y="-16" width="20" height="20" rx="2" fill="none" stroke="#ff9f5a" stroke-width="2.5"/>
+      <rect x="4" y="-28" width="30" height="30" rx="3" fill="none" stroke="#ffd76d" stroke-width="3" filter="url(#tglow)"/>
+      <path d="M22,-24 L30,-32 M30,-32 L24,-32 M30,-32 L30,-26" fill="none" stroke="#ffd76d" stroke-width="2"/>
+    </g>
+    <text x="135" y="128" text-anchor="middle" font-family="'Cascadia Code','Consolas',monospace" font-size="15" font-weight="700" fill="#ffd76d">upscale_image</text>
+    <text x="135" y="152" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="11" fill="#e8ddc8">Real-ESRGAN via Vulkan</text>
+    <text x="135" y="170" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="11" fill="#e8ddc8">Upscayl's bundled binary</text>
+    <text x="135" y="198" text-anchor="middle" font-family="'Cascadia Code','Consolas',monospace" font-size="10" fill="#ff9f5a">local · GPU-bound, see limitation ↓</text>
+  </g>
+</svg>

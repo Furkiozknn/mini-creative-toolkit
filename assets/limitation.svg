@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 320" width="1200" height="320">
+  <defs>
+    <radialGradient id="lbg" cx="50%" cy="35%" r="90%">
+      <stop offset="0%" stop-color="#1a1408"/>
+      <stop offset="60%" stop-color="#120e07"/>
+      <stop offset="100%" stop-color="#0a0704"/>
+    </radialGradient>
+    <linearGradient id="ltitle" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#ffd76d"/>
+      <stop offset="55%" stop-color="#ff9f5a"/>
+      <stop offset="100%" stop-color="#ff6b6b"/>
+    </linearGradient>
+    <linearGradient id="stall" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#ffd76d"/>
+      <stop offset="100%" stop-color="#ff6b6b"/>
+    </linearGradient>
+    <pattern id="hatch" width="10" height="10" patternTransform="rotate(45)" patternUnits="userSpaceOnUse">
+      <line x1="0" y1="0" x2="0" y2="10" stroke="#2a1a10" stroke-width="4"/>
+    </pattern>
+    <filter id="lglow" x="-80%" y="-80%" width="260%" height="260%">
+      <feGaussianBlur stdDeviation="5" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+
+  <rect width="1200" height="320" fill="url(#lbg)"/>
+
+  <text x="40" y="46" font-family="'Cascadia Code','Consolas',monospace" font-weight="700" font-size="22" fill="url(#ltitle)">⚠ known limitation — dürüstlük testi</text>
+  <text x="40" y="70" font-family="Segoe UI, sans-serif" font-size="13" fill="#e8ddc8" opacity="0.85">upscale_image gerçek ve doğru çalışıyor — ama entegre grafikte pratik değil. Tested and confirmed, not assumed.</text>
+
+  <!-- progress bar -->
+  <text x="40" y="120" font-family="'Cascadia Code','Consolas',monospace" font-size="13" fill="#f5efe0">upscale_image · one small icon · Intel UHD (integrated, no discrete GPU)</text>
+  <rect x="40" y="135" width="700" height="30" rx="8" fill="#1f1810" stroke="#4a3a24" stroke-width="1.5"/>
+  <rect x="40" y="135" width="700" height="30" rx="8" fill="url(#hatch)" opacity="0.5"/>
+  <rect x="40" y="135" width="224" height="30" rx="8" fill="url(#stall)" filter="url(#lglow)"/>
+  <line x1="264" y1="129" x2="264" y2="171" stroke="#ff6b6b" stroke-width="2" stroke-dasharray="3 3"/>
+  <text x="264" y="122" text-anchor="middle" font-family="'Cascadia Code','Consolas',monospace" font-size="13" fill="#ff9f5a" font-weight="700">32% — stalled here</text>
+
+  <g transform="translate(300,150)" filter="url(#lglow)">
+    <circle r="12" fill="none" stroke="#ff6b6b" stroke-width="2"/>
+    <line x1="0" y1="0" x2="0" y2="-7" stroke="#ff6b6b" stroke-width="2"/>
+    <line x1="0" y1="0" x2="5" y2="2" stroke="#ff6b6b" stroke-width="2"/>
+  </g>
+
+  <text x="40" y="200" font-family="'Cascadia Code','Consolas',monospace" font-size="20" font-weight="700" fill="#ffb08a">7+ minutes · did not finish</text>
+  <text x="40" y="224" font-family="Segoe UI, sans-serif" font-size="12" fill="#cbb98f">Vulkan-based Real-ESRGAN genuinely needs a discrete GPU to be usable interactively.</text>
+  <text x="40" y="242" font-family="Segoe UI, sans-serif" font-size="12" fill="#cbb98f">On integrated graphics: prefer generate_image_free, or accept the wait.</text>
+
+  <!-- comparison panel -->
+  <rect x="800" y="100" width="360" height="180" rx="14" fill="#0f1c0f" stroke="#5fd9a0" stroke-width="2" filter="url(#lglow)"/>
+  <text x="820" y="128" font-family="'Cascadia Code','Consolas',monospace" font-size="14" font-weight="700" fill="#8effc2">meanwhile, everything else</text>
+  <g font-family="Segoe UI, sans-serif" font-size="12" fill="#e8ffe8">
+    <text x="820" y="155">✓ remove_background — instant</text>
+    <text x="820" y="177">✓ resize_image — instant</text>
+    <text x="820" y="199">✓ convert_format — instant</text>
+    <text x="820" y="221">✓ video_thumbnail / to_gif / trim — seconds</text>
+  </g>
+  <text x="820" y="252" font-family="Segoe UI, sans-serif" font-size="11" fill="#bfe8c9" opacity="0.9">CPU-only, deterministic — no GPU wait, ever.</text>
+</svg>
