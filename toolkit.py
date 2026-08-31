@@ -1,4 +1,5 @@
 import logging
+import os
 import subprocess
 import urllib.parse
 from datetime import datetime
@@ -6,7 +7,7 @@ from pathlib import Path
 
 import httpx
 from mcp.server import MCPServer
-from PIL import Image
+from PIL import Image, ImageDraw, ImageFont
 
 logger = logging.getLogger(__name__)
 
@@ -64,18 +65,36 @@ def generate_image_free(prompt: str, width: int = 1024, height: int = 1024, seed
     return str(out_path)
 
 
-UPSCAYL_BIN = Path(r"C:\Users\furki\Desktop\Claude projeler\upscayl\resources\win\bin\upscayl-bin.exe")
-UPSCAYL_MODELS = Path(r"C:\Users\furki\Desktop\Claude projeler\upscayl\resources\models")
+# These hardcoded paths only ever worked on the original dev's Windows machine - they are kept
+# purely as a documented fallback default, never assume they resolve on your install. Point
+# UPSCAYL_BIN_PATH / UPSCAYL_MODELS_PATH at your own Upscayl checkout to actually use this tool.
+UPSCAYL_BIN = Path(
+    os.environ.get("UPSCAYL_BIN_PATH")
+    or r"C:\Users\furki\Desktop\Claude projeler\upscayl\resources\win\bin\upscayl-bin.exe"
+)
+UPSCAYL_MODELS = Path(
+    os.environ.get("UPSCAYL_MODELS_PATH")
+    or r"C:\Users\furki\Desktop\Claude projeler\upscayl\resources\models"
+)
 
 
 @mcp.tool()
 def upscale_image(image_path: str, scale: int = 4, model: str = "upscayl-standard-4x") -> str:
-    """Upscale an image with real-ESRGAN via Vulkan (reuses Upscayl's bundled binary/models). Tested and confirmed CORRECTLY SLOW to the point of impracticality on Intel integrated graphics (minutes for a single small icon) - only use this if the machine has a real discrete GPU. Otherwise prefer upscale_image_fast (CPU, sub-second, meaningfully better than plain resize) or accept the wait."""
+    """Upscale an image with real-ESRGAN via Vulkan (reuses Upscayl's bundled binary/models). Tested and confirmed CORRECTLY SLOW to the point of impracticality on Intel integrated graphics (minutes for a single small icon) - only use this if the machine has a real discrete GPU. Otherwise prefer upscale_image_fast (CPU, sub-second, meaningfully better than plain resize) or accept the wait. Requires UPSCAYL_BIN_PATH and UPSCAYL_MODELS_PATH env vars pointing at a local Upscayl install - there is no bundled default that works outside the original dev's machine."""
     src = Path(image_path)
     if not src.exists():
         raise FileNotFoundError(f"No such file: {image_path}")
     if not UPSCAYL_BIN.exists():
-        raise FileNotFoundError(f"Upscayl binary not found at {UPSCAYL_BIN} - clone/build the upscayl repo first")
+        raise FileNotFoundError(
+            f"Upscayl binary not found at {UPSCAYL_BIN} - set the UPSCAYL_BIN_PATH env var to your "
+            "upscayl-bin executable (and UPSCAYL_MODELS_PATH to its models/ dir), or clone/build the "
+            "upscayl repo first"
+        )
+    if not UPSCAYL_MODELS.exists():
+        raise FileNotFoundError(
+            f"Upscayl models dir not found at {UPSCAYL_MODELS} - set the UPSCAYL_MODELS_PATH env var "
+            "to point at Upscayl's resources/models directory"
+        )
 
     out_path = _stamp("upscaled", "png")
     result = subprocess.run(
@@ -252,6 +271,103 @@ def video_trim(video_path: str, start: str, duration: float) -> str:
     if needs_reencode:
         _run_ffmpeg(reencode_args)
     logger.info("Trimmed %s [%s, %ss] -> %s", src, start, duration, out_path)
+    return str(out_path)
+
+
+@mcp.tool()
+def strip_metadata(image_path: str) -> str:
+    """Strip EXIF/metadata (GPS location, camera model, timestamps, etc.) from an image and save a clean copy. Privacy tool, not a creative one - no model, no network, just rebuilds the image from raw pixel data so nothing but the pixels survives."""
+    src = Path(image_path)
+    if not src.exists():
+        raise FileNotFoundError(f"No such file: {image_path}")
+
+    with Image.open(src) as opened:
+        # Rebuilding from raw pixel bytes (instead of opened.save with exif=b"") is the
+        # reliable way to drop *every* metadata chunk, not only EXIF - ICC profiles, XMP,
+        # PNG tEXt chunks, etc. all get left behind too.
+        clean = Image.frombytes(opened.mode, opened.size, opened.tobytes())
+
+    out_path = _stamp("stripped", src.suffix.lstrip(".") or "png")
+    clean.save(out_path)
+    logger.info("Stripped metadata: %s -> %s", src, out_path)
+    return str(out_path)
+
+
+_WATERMARK_POSITIONS = {"top-left", "top-right", "bottom-left", "bottom-right", "center"}
+
+
+@mcp.tool()
+def add_watermark(
+    image_path: str,
+    text: str,
+    position: str = "bottom-right",
+    opacity: float = 0.5,
+    font_size: int = 24,
+) -> str:
+    """Overlay semi-transparent text onto an image - a watermark/caption, not a filter. position is one of top-left, top-right, bottom-left, bottom-right, center. opacity is 0 (invisible) to 1 (solid). Pillow only, no model."""
+    src = Path(image_path)
+    if not src.exists():
+        raise FileNotFoundError(f"No such file: {image_path}")
+    if position not in _WATERMARK_POSITIONS:
+        raise ValueError(f"position must be one of {sorted(_WATERMARK_POSITIONS)}, got {position!r}")
+    if not 0.0 <= opacity <= 1.0:
+        raise ValueError(f"opacity must be between 0 and 1, got {opacity}")
+    _require_positive(font_size=font_size)
+
+    with Image.open(src) as opened:
+        original_mode = opened.mode
+        base = opened.convert("RGBA")
+
+    overlay = Image.new("RGBA", base.size, (0, 0, 0, 0))
+    draw = ImageDraw.Draw(overlay)
+    font = ImageFont.load_default(size=font_size)
+
+    margin = max(font_size // 4, 4)
+    left, top, right, bottom = draw.textbbox((0, 0), text, font=font)
+    text_w, text_h = right - left, bottom - top
+
+    x_positions = {"top-left": margin, "bottom-left": margin, "center": (base.width - text_w) // 2}
+    x_positions["top-right"] = base.width - text_w - margin
+    x_positions["bottom-right"] = base.width - text_w - margin
+    y_positions = {"top-left": margin, "top-right": margin, "center": (base.height - text_h) // 2}
+    y_positions["bottom-left"] = base.height - text_h - margin
+    y_positions["bottom-right"] = base.height - text_h - margin
+
+    xy = (x_positions[position] - left, y_positions[position] - top)
+    draw.text(xy, text, font=font, fill=(255, 255, 255, round(255 * opacity)))
+
+    composited = Image.alpha_composite(base, overlay)
+
+    ext = src.suffix.lstrip(".") or "png"
+    if ext.lower() in ("jpg", "jpeg") or original_mode not in ("RGBA", "LA"):
+        # Flatten onto white so formats without alpha (or images that started opaque) save cleanly.
+        flattened = Image.new("RGB", composited.size, (255, 255, 255))
+        flattened.paste(composited, mask=composited.split()[-1])
+        result = flattened
+    else:
+        result = composited
+
+    out_path = _stamp("watermarked", ext)
+    result.save(out_path)
+    logger.info("Watermarked %s with %r @ %s -> %s", src, text, position, out_path)
+    return str(out_path)
+
+
+@mcp.tool()
+def extract_audio(video_path: str, audio_format: str = "mp3") -> str:
+    """Pull the audio track out of a video file via ffmpeg, saved as mp3 or wav. No video re-encode, no model - straight audio extraction."""
+    src = Path(video_path)
+    if not src.exists():
+        raise FileNotFoundError(f"No such file: {video_path}")
+
+    fmt = audio_format.lower().lstrip(".")
+    if fmt not in ("mp3", "wav"):
+        raise ValueError(f"audio_format must be 'mp3' or 'wav', got {audio_format!r}")
+
+    out_path = _stamp("audio", fmt)
+    codec_args = ["-acodec", "libmp3lame", "-q:a", "2"] if fmt == "mp3" else ["-acodec", "pcm_s16le"]
+    _run_ffmpeg(["-i", str(src), "-vn", *codec_args, str(out_path)])
+    logger.info("Extracted %s audio from %s -> %s", fmt, src, out_path)
     return str(out_path)
 
 
