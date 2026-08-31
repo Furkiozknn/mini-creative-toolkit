@@ -146,9 +146,28 @@ def upscale_image_fast(image_path: str, scale: int = 4) -> str:
 
 
 @mcp.tool()
-def remove_background(image_path: str) -> str:
-    """Remove the background from an image, saved as a transparent PNG. CPU-only (ONNX via rembg), no API key or GPU needed."""
-    from rembg import remove
+def remove_background(image_path: str, model: str = "u2net") -> str:
+    """Remove the background from an image, saved as a transparent PNG. CPU-only (ONNX via rembg), no API key or GPU needed.
+
+    `model` defaults to "u2net" (Apache-2.0-licensed, small, fast). This is
+    deliberately NOT the same as calling rembg's own `remove()` with no
+    session argument: as of rembg 2.0.81, rembg's own internal default
+    (triggered when you pass session=None) silently resolves to
+    "bria-rmbg" - a CC BY-NC 4.0, non-commercial-only model - which is not
+    something a tool with no license caveat in its docstring should ever
+    hand a caller by accident. This function always builds an explicit
+    session from `model`, so its behavior never depends on whatever rembg's
+    own undocumented default happens to be in a given release.
+
+    Pass "birefnet-general" for meaningfully better edge/hair quality on
+    general subjects (same library, no new dependency) - but its weights
+    are a much larger one-time download and inference is noticeably slower
+    on CPU, so it's opt-in rather than the default. Any session name rembg
+    supports works here (see `rembg.sessions.sessions_names`) - check that
+    model's own license before using it commercially, the same way
+    "bria-rmbg" needed checking.
+    """
+    from rembg import new_session, remove
 
     src = Path(image_path)
     if not src.exists():
@@ -157,9 +176,10 @@ def remove_background(image_path: str) -> str:
     out_path = _stamp("nobg", "png")
     with open(src, "rb") as f:
         input_bytes = f.read()
-    output_bytes = remove(input_bytes)
+    session = new_session(model)
+    output_bytes = remove(input_bytes, session=session)
     out_path.write_bytes(output_bytes)
-    logger.info("Background removed: %s -> %s", src, out_path)
+    logger.info("Background removed (model=%s): %s -> %s", model, src, out_path)
     return str(out_path)
 
 

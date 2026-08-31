@@ -114,6 +114,61 @@ def test_remove_background_produces_rgba_png(sample_image):
         assert img.mode == "RGBA"
 
 
+def test_remove_background_non_default_model_uses_new_session(monkeypatch, sample_image):
+    """Doesn't exercise a real BiRefNet download (far too slow for CI - a
+    single cold session load alone can take well over a minute) - just
+    verifies the model name is correctly plumbed through to rembg's own
+    session API, which is what the caller-facing contract actually promises."""
+    import rembg
+
+    calls = {}
+
+    def fake_new_session(name):
+        calls["model"] = name
+        return "fake-session"
+
+    def fake_remove(data, session=None):
+        calls["session"] = session
+        return data
+
+    monkeypatch.setattr(rembg, "new_session", fake_new_session)
+    monkeypatch.setattr(rembg, "remove", fake_remove)
+
+    out = Path(remove_background(str(sample_image), model="birefnet-general"))
+    assert out.exists()
+    assert calls == {"model": "birefnet-general", "session": "fake-session"}
+
+
+def test_remove_background_default_explicitly_builds_a_u2net_session(monkeypatch, sample_image):
+    """This tool must never rely on rembg's own no-argument default: as of
+    rembg 2.0.81, session=None internally resolves to "bria-rmbg" (CC
+    BY-NC 4.0, non-commercial-only) - not the small permissive "u2net"
+    model this tool's docstring promises. Confirmed directly against
+    rembg/bg.py's `remove()` source in this env's installed version before
+    writing this test. The fix is to always pass an explicit session built
+    from `model`, so this behavior can never silently change (or silently
+    violate the license this tool implicitly promises) across a rembg
+    version bump - this test locks that in."""
+    import rembg
+
+    calls = {}
+
+    def fake_new_session(name):
+        calls["model"] = name
+        return "fake-session"
+
+    def fake_remove(data, session=None):
+        calls["session"] = session
+        return data
+
+    monkeypatch.setattr(rembg, "new_session", fake_new_session)
+    monkeypatch.setattr(rembg, "remove", fake_remove)
+
+    out = Path(remove_background(str(sample_image)))
+    assert out.exists()
+    assert calls == {"model": "u2net", "session": "fake-session"}
+
+
 def test_video_thumbnail_produces_image(sample_video):
     out = Path(video_thumbnail(str(sample_video), "00:00:00"))
     assert out.exists() and out.stat().st_size > 0
