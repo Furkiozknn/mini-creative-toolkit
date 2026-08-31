@@ -4,7 +4,7 @@
   <img src="https://img.shields.io/badge/license-MIT-8effc2?style=flat-square" alt="license: MIT">
   <img src="https://img.shields.io/badge/python-3.11%2B-ffd76d?style=flat-square" alt="python 3.11+">
   <img src="https://img.shields.io/badge/protocol-MCP-ff9f5a?style=flat-square" alt="MCP protocol">
-  <img src="https://img.shields.io/badge/tests-passing-8effc2?style=flat-square" alt="tests: passing">
+  <img src="https://github.com/Furkiozknn/mini-creative-toolkit/actions/workflows/test.yml/badge.svg" alt="tests">
   <img src="https://img.shields.io/badge/GPU%20required-no-ffd76d?style=flat-square" alt="no GPU required">
   <img src="https://img.shields.io/badge/API%20keys-0-ff9f5a?style=flat-square" alt="0 API keys">
 </p>
