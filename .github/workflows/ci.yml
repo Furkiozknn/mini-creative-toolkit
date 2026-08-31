@@ -16,7 +16,11 @@ jobs:
         with:
           python-version: "3.11"
 
-      # ffmpeg/ffprobe ship preinstalled on ubuntu-latest runners - no apt-get needed.
+      # ffmpeg/ffprobe are NOT preinstalled on the ubuntu-latest runner image
+      # (confirmed via a real CI failure, exit 127) - install explicitly.
+      - name: Install ffmpeg
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg
+
       - name: Verify ffmpeg is available
         run: ffmpeg -version && ffprobe -version
 
