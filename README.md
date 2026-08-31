@@ -36,7 +36,7 @@ Bu repo tam tersi bir iddiada bulunuyor: **arka planı silmek, boyutlandırmak, 
 | İddia edilen | Gerçek durum |
 |---|---|
 | "Ücretsiz AI studio" | Genelde ücretli API'ye ince bir kapı |
-| Bu repo | 8 araç tamamen yerel (rembg/Pillow/ffmpeg/opencv) + 1 araç gerçekten ücretsiz hosted (Pollinations.ai) |
+| Bu repo | 11 araç tamamen yerel (rembg/Pillow/ffmpeg/opencv) + 1 araç gerçekten ücretsiz hosted (Pollinations.ai) |
 | API key gerekiyor mu? | Hayır — hiçbir araç için |
 | Kredi kartı / hesap? | Hayır |
 | Üretici (generative) model çağrısı? | Sadece `generate_image_free`, ve o da ücretsiz |
@@ -60,6 +60,9 @@ Deterministik işler yerelde kalır; tek üretici (generative) araç ücretsiz h
 | ✂️ `video_trim` | ffmpeg | Fast lossless cut, re-encode fallback if needed | local, CPU |
 | 🔍 `upscale_image` | Real-ESRGAN via Vulkan (Upscayl's bundled binary) | Upscales an image | local, **GPU-bound** — see [limitation](#-known-limitation--dürüstlük-testi) |
 | ⚡ `upscale_image_fast` | FSRCNN (OpenCV `dnn_superres`) | Upscales an image, CPU-only, sub-second | local, CPU |
+| 🕵️ `strip_metadata` | Pillow | Rebuilds an image from raw pixel bytes, dropping EXIF/ICC/XMP/etc. | local, CPU |
+| 💧 `add_watermark` | Pillow (`ImageDraw`) | Overlays semi-transparent text at a chosen corner/center + opacity | local, CPU |
+| 🔊 `extract_audio` | ffmpeg | Pulls the audio track out of a video as mp3 or wav | local, CPU |
 
 Every tool takes a file path in, returns a file path out (`output/` inside the repo, timestamped). No hidden state, no queue, no polling.
 
@@ -71,7 +74,7 @@ Every tool takes a file path in, returns a file path out (`output/` inside the r
 
 Bu projenin gerçek fikri burada: bir dosya geldiğinde, **ne kadarının gerçekten bir modele ihtiyacı var?** Cevap: neredeyse hiçbiri.
 
-- **8 araç** — `remove_background`, `resize_image`, `convert_format`, `video_thumbnail`, `video_to_gif`, `video_trim`, `upscale_image`, `upscale_image_fast` — bu makinede, CPU üzerinde, deterministik olarak çalışır. `rembg`, `Pillow`, `ffmpeg`, `opencv` — network gerektirmez (upscale_image'in Vulkan binary'si de yerel çalışır, sadece GPU'ya ihtiyaç duyar; upscale_image_fast zaten saf CPU).
+- **11 araç** — `remove_background`, `resize_image`, `convert_format`, `video_thumbnail`, `video_to_gif`, `video_trim`, `upscale_image`, `upscale_image_fast`, `strip_metadata`, `add_watermark`, `extract_audio` — bu makinede, CPU üzerinde, deterministik olarak çalışır. `rembg`, `Pillow`, `ffmpeg`, `opencv` — network gerektirmez (upscale_image'in Vulkan binary'si de yerel çalışır, sadece GPU'ya ihtiyaç duyar; upscale_image_fast zaten saf CPU).
 - **1 araç** — `generate_image_free` — gerçekten üretici (generative) olduğu için tek başına hosted bir API'ye, Pollinations.ai'ye gider. Ücretsiz, key'siz, kayıtsız.
 - **Hiçbir araç** ücretli bir API'ye gitmez. Bu bir tasarım kararı, bir eksiklik değil — bkz. [Neden var](#-neden-var--the-pitch).
 
@@ -105,7 +108,16 @@ Bu sınır kasıtlı olarak gizlenmiyor veya yumuşatılmıyor: `toolkit.py` iç
 uv sync
 ```
 
-Bu, `rembg`, `Pillow`, `httpx`, `mcp[cli]`, `opencv-contrib-python` gibi tüm bağımlılıkları kurar. `ffmpeg`/`ffprobe` sistemde kurulu olmalı (PATH'te). `upscale_image` için ayrıca Upscayl'in bundled binary/modellerine ihtiyaç var (repo içinde `toolkit.py`'de yolu tanımlı). `upscale_image_fast` için gereken FSRCNN ağırlıkları (`models/FSRCNN_x{2,3,4}.pb`, toplam ~120KB) repo'ya dahil — ekstra kurulum gerekmiyor.
+Bu, `rembg`, `Pillow`, `httpx`, `mcp[cli]`, `opencv-contrib-python` gibi tüm bağımlılıkları kurar. `ffmpeg`/`ffprobe` sistemde kurulu olmalı (PATH'te — `extract_audio`, `video_thumbnail`, `video_to_gif`, `video_trim` hepsi buna ihtiyaç duyar). `upscale_image_fast` için gereken FSRCNN ağırlıkları (`models/FSRCNN_x{2,3,4}.pb`, toplam ~120KB) repo'ya dahil — ekstra kurulum gerekmiyor.
+
+`upscale_image` için Upscayl'in bundled binary/modellerine ihtiyaç var, ve bunların yolu **kimsenin makinesinde otomatik doğru olmayacak** — `toolkit.py`'deki hardcoded Windows yolu sadece orijinal geliştiricinin kendi bilgisayarında çalışan bir fallback, başka hiçbir yerde işe yaramaz. Bu araç senin makinende çalışsın istiyorsan, kendi Upscayl kurulumuna işaret eden şu env var'ları set et:
+
+```bash
+export UPSCAYL_BIN_PATH=/path/to/upscayl/resources/*/bin/upscayl-bin
+export UPSCAYL_MODELS_PATH=/path/to/upscayl/resources/models
+```
+
+Set edilmezse (veya yanlış yola işaret ederse) `upscale_image` net bir `FileNotFoundError` fırlatır ve hangi env var'ları set etmen gerektiğini söyler — sessizce başarısız olmaz. Bu ikisini kurmak istemiyorsan `upscale_image_fast`'i kullan, o zaten saf CPU ve sıfır ekstra kurulum istiyor.
 
 ## ✅ Running the tests
 
@@ -115,7 +127,7 @@ Her araç, gerçek üretilmiş fixture'lara karşı uçtan uca test edilir — m
 uv run pytest
 ```
 
-`test_toolkit.py` şunları doğrular: aspect-ratio korumalı/korumasız resize, boyut validasyonu, eksik dosya hataları, JPEG için alfa düzleştirme, `remove_background`'ın gerçekten RGBA ürettiği, `upscale_image_fast`'in doğru ölçekte çıktı ürettiği ve geçersiz scale/dosya değerlerini reddettiği, video thumbnail/GIF/trim'in beklenen çıktı ve süreleri, ve GIF üretiminin ara palet dosyasını temizlediği.
+`test_toolkit.py` şunları doğrular: aspect-ratio korumalı/korumasız resize, boyut validasyonu, eksik dosya hataları, JPEG için alfa düzleştirme, `remove_background`'ın gerçekten RGBA ürettiği, `upscale_image_fast`'in doğru ölçekte çıktı ürettiği ve geçersiz scale/dosya değerlerini reddettiği, video thumbnail/GIF/trim'in beklenen çıktı ve süreleri, GIF üretiminin ara palet dosyasını temizlediği, `strip_metadata`'nın gerçek bir EXIF tag'ini gerçekten sildiği, `add_watermark`'ın piksel verisini değiştirdiği ve geçersiz position/opacity'i reddettiği, ve `extract_audio`'nun sesli bir video fixture'ından gerçek mp3/wav dosyası çıkardığı.
 
 ## 🔌 Registering as an MCP server
 
@@ -123,15 +135,18 @@ uv run pytest
 claude mcp add --transport stdio mini-creative-toolkit -- uv run --project /path/to/this/repo toolkit.py
 ```
 
-Proje veya kullanıcı scope'unda kaydedilebilir. Kayıttan sonra 9 araç da (`generate_image_free`, `remove_background`, `resize_image`, `convert_format`, `video_thumbnail`, `video_to_gif`, `video_trim`, `upscale_image`, `upscale_image_fast`) doğrudan çağrılabilir hale gelir.
+Proje veya kullanıcı scope'unda kaydedilebilir. Kayıttan sonra 12 araç da (`generate_image_free`, `remove_background`, `resize_image`, `convert_format`, `video_thumbnail`, `video_to_gif`, `video_trim`, `upscale_image`, `upscale_image_fast`, `strip_metadata`, `add_watermark`, `extract_audio`) doğrudan çağrılabilir hale gelir.
 
 ## 📁 Project layout
 
 ```
 mini-creative-toolkit/
-├── toolkit.py          # MCP server + all 9 tools
+├── toolkit.py          # MCP server + all 12 tools
 ├── test_toolkit.py      # end-to-end tests, real fixtures, no mocks
 ├── PROJECT.md            # scope, stack, definition of done
+├── .github/
+│   └── workflows/
+│       └── ci.yml         # uv sync + uv run pytest on push/PR
 ├── models/
 │   └── FSRCNN_x{2,3,4}.pb # pretrained weights for upscale_image_fast (~40KB each)
 ├── assets/
