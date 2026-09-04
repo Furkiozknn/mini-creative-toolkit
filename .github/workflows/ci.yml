@@ -12,13 +12,17 @@ jobs:
       fail-fast: false
       matrix:
         python-version: ["3.11", "3.12", "3.13"]
+    # setup-uv@v3 has no `python-version` input - passing one produced only an
+    # "Unexpected input(s)" warning, and every matrix leg silently ran on the
+    # runner's default interpreter. UV_PYTHON is read by uv itself, which
+    # downloads the interpreter if the runner does not have it.
+    env:
+      UV_PYTHON: ${{ matrix.python-version }}
     steps:
       - uses: actions/checkout@v4
 
       - name: Install uv
         uses: astral-sh/setup-uv@v3
-        with:
-          python-version: ${{ matrix.python-version }}
 
       # ffmpeg/ffprobe are NOT preinstalled on the ubuntu-latest runner image
       # (confirmed via a real CI failure, exit 127) - install explicitly.
@@ -31,6 +35,15 @@ jobs:
       - name: Install dependencies
         run: uv sync
 
+      # Asserted, because the previous form of this matrix looked like it was
+      # testing three interpreters while testing one three times.
+      - name: The interpreter really is the one this matrix leg claims
+        run: |
+          actual=$(uv run python -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')")
+          echo "matrix asked for ${{ matrix.python-version }}, uv resolved $actual"
+          test "$actual" = "${{ matrix.python-version }}" || {
+            echo "matrix leg ${{ matrix.python-version }} actually ran on $actual"; exit 1; }
+
       - name: Run tests
         run: uv run pytest -v
 
@@ -40,13 +53,13 @@ jobs:
   # ffmpeg at all, which is a supported configuration.
   without-ffmpeg:
     runs-on: ubuntu-latest
+    env:
+      UV_PYTHON: "3.11"
     steps:
       - uses: actions/checkout@v4
 
       - name: Install uv
         uses: astral-sh/setup-uv@v3
-        with:
-          python-version: "3.11"
 
       - name: Confirm ffmpeg really is absent
         run: |
@@ -75,13 +88,13 @@ jobs:
 
   surfaces:
     runs-on: ubuntu-latest
+    env:
+      UV_PYTHON: "3.11"
     steps:
       - uses: actions/checkout@v4
 
       - name: Install uv
         uses: astral-sh/setup-uv@v3
-        with:
-          python-version: "3.11"
 
       - name: Install ffmpeg
         run: sudo apt-get update && sudo apt-get install -y ffmpeg
