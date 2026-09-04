@@ -1,16 +1,43 @@
 [project]
 name = "mini-creative-toolkit"
-version = "0.1.0"
-description = "Local, CPU-only image/video utilities (bg removal, resize, thumbnails, gifs) as an MCP server - no API keys, no GPU, no paid dependency"
+version = "2.0.0"
+description = "Local media operations for MCP clients - images, video and audio. CPU-first, no paid APIs, external network access isolated and documented."
 readme = "README.md"
+license = { text = "MIT" }
 requires-python = ">=3.11"
 dependencies = [
+    # Background removal. CPU ONNX runtime; the [cpu] extra keeps the GPU
+    # runtime (and its CUDA payload) out of the dependency tree.
     "rembg[cpu]>=2.0.65",
+    # Image decode/encode, resizing, drawing. The workhorse.
     "pillow>=11.0.0",
+    # The MCP server itself.
     "mcp[cli]>=2.0.0",
+    # HTTP for the one hosted tool. Chosen over urllib for streaming with a
+    # byte budget, which is what stops an unbounded response.
     "httpx>=0.28.1",
+    # FSRCNN super-resolution lives in dnn_superres, which ships only in the
+    # -contrib build. Plain opencv-python does not have it.
     "opencv-contrib-python>=5.0.0.93",
 ]
 
+[project.urls]
+Homepage = "https://github.com/Furkiozknn/mini-creative-toolkit"
+Issues = "https://github.com/Furkiozknn/mini-creative-toolkit/issues"
+
+[project.scripts]
+mct = "mini_creative_toolkit.cli:main"
+
 [dependency-groups]
 dev = ["pytest>=8.0.0"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/mini_creative_toolkit"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"

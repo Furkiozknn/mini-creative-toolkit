@@ -8,13 +8,21 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12", "3.13"]
+    # setup-uv@v3 has no `python-version` input - passing one produced only an
+    # "Unexpected input(s)" warning, and every matrix leg silently ran on the
+    # runner's default interpreter. UV_PYTHON is read by uv itself, which
+    # downloads the interpreter if the runner does not have it.
+    env:
+      UV_PYTHON: ${{ matrix.python-version }}
     steps:
       - uses: actions/checkout@v4
 
       - name: Install uv
         uses: astral-sh/setup-uv@v3
-        with:
-          python-version: "3.11"
 
       # ffmpeg/ffprobe are NOT preinstalled on the ubuntu-latest runner image
       # (confirmed via a real CI failure, exit 127) - install explicitly.
@@ -27,5 +35,111 @@ jobs:
       - name: Install dependencies
         run: uv sync
 
+      # Asserted, because the previous form of this matrix looked like it was
+      # testing three interpreters while testing one three times.
+      - name: The interpreter really is the one this matrix leg claims
+        run: |
+          actual=$(uv run python -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')")
+          echo "matrix asked for ${{ matrix.python-version }}, uv resolved $actual"
+          test "$actual" = "${{ matrix.python-version }}" || {
+            echo "matrix leg ${{ matrix.python-version }} actually ran on $actual"; exit 1; }
+
       - name: Run tests
         run: uv run pytest -v
+
+  # The video/security tests skip themselves without ffmpeg. That is correct
+  # behaviour, but it means a break in the ffmpeg path could hide behind a
+  # skip. This job proves the *rest* of the toolkit still works with no
+  # ffmpeg at all, which is a supported configuration.
+  without-ffmpeg:
+    runs-on: ubuntu-latest
+    env:
+      UV_PYTHON: "3.11"
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+
+      - name: Confirm ffmpeg really is absent
+        run: |
+          if command -v ffmpeg; then echo "ffmpeg is unexpectedly installed"; exit 1; fi
+
+      - name: Install dependencies
+        run: uv sync
+
+      - name: Image tools must work without ffmpeg
+        run: uv run pytest tests/test_image_tools.py tests/test_validation.py tests/test_paths_security.py tests/test_batch.py -v
+
+      - name: A video tool must fail with a clear missing-dependency error
+        run: |
+          uv run python - <<'PY'
+          from mini_creative_toolkit.engines import ffmpeg
+          from mini_creative_toolkit.errors import MissingDependencyError
+          try:
+              ffmpeg.find("ffmpeg")
+          except MissingDependencyError as exc:
+              assert "PATH" in exc.message, exc.message
+              assert "apt-get install ffmpeg" in exc.message, exc.message
+              print("clear missing-dependency error:", exc.message[:80])
+          else:
+              raise SystemExit("expected MissingDependencyError with ffmpeg absent")
+          PY
+
+  surfaces:
+    runs-on: ubuntu-latest
+    env:
+      UV_PYTHON: "3.11"
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+
+      - name: Install ffmpeg
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg
+
+      - name: Install dependencies
+        run: uv sync
+
+      # Both documented entry points must start. `toolkit.py` is what existing
+      # MCP client configurations still say, so a break there is a break for
+      # every current user.
+      - name: The MCP server starts over stdio
+        run: |
+          echo "" | timeout 60 uv run python -m mini_creative_toolkit
+          echo "" | timeout 60 uv run toolkit.py
+
+      - name: The CLI works end to end
+        run: |
+          uv run mct --version
+          uv run mct capabilities --json > caps.json
+          python3 -c "import json; d=json.load(open('caps.json')); assert len(d['tools']) == 23, len(d['tools'])"
+          uv run python -c "
+          from PIL import Image
+          Image.new('RGB', (200, 120), (10, 90, 200)).save('sample.png')
+          "
+          uv run mct inspect sample.png
+          uv run mct resize sample.png --width 60 --height 60
+          uv run mct optimize sample.png --goal web
+          uv run mct strip-metadata sample.png
+          uv run mct upscale sample.png --scale 2
+
+      # The CLI's exit-code contract, asserted rather than assumed. These run
+      # under `bash -e`, so each non-zero exit must be captured before it is
+      # checked - a bare invocation would abort the step first.
+      - name: A missing file exits 1, a usage error exits 2
+        run: |
+          set +e
+          uv run mct resize does-not-exist.png --width 10 --height 10
+          missing=$?
+          uv run mct resize --width 10
+          usage=$?
+          set -e
+          test "$missing" -eq 1 || { echo "expected exit 1 for a missing file, got $missing"; exit 1; }
+          test "$usage" -eq 2 || { echo "expected exit 2 for a usage error, got $usage"; exit 1; }
+
+      - name: No temporary artefacts survive a full CLI run
+        run: |
+          leftovers=$(find output -name '*.part-*' -o -name 'tmp-*' 2>/dev/null || true)
+          test -z "$leftovers" || { echo "leftover temporary files: $leftovers"; exit 1; }
