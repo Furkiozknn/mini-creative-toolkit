@@ -47,8 +47,49 @@ class _Parser(argparse.ArgumentParser):
         self.exit(EXIT_USAGE, f"{self.prog}: error: {message}\n")
 
 
+def _global_flags(suppress: bool) -> argparse.ArgumentParser:
+    """The flags that work either side of the subcommand.
+
+    `mct --json capabilities` and `mct capabilities --json` should both work -
+    the second is the form people actually type, and requiring the first is a
+    papercut with no upside.
+
+    The subparser copies use `default=SUPPRESS` so that omitting a flag after
+    the subcommand leaves the value parsed before it alone. Without that,
+    argparse's normal defaults would overwrite `--json` back to False and the
+    pre-subcommand form would silently stop working.
+    """
+    parser = argparse.ArgumentParser(add_help=False)
+    unset = argparse.SUPPRESS if suppress else None
+    parser.add_argument(
+        "--log-level", choices=("quiet", "normal", "verbose"),
+        default=unset, help="override MCT_LOG_LEVEL",
+    )
+    parser.add_argument(
+        "--output-dir", default=unset, help="override MCT_OUTPUT_DIR for this invocation",
+    )
+    parser.add_argument(
+        "--json", action="store_true",
+        default=argparse.SUPPRESS if suppress else False,
+        help="print the raw structured result as JSON",
+    )
+    return parser
+
+
+#: Added to every subcommand, so the global flags also work after it.
+SUBCOMMAND_GLOBALS = _global_flags(suppress=True)
+
+
+def _sub(subparsers, name: str, help_text: str) -> argparse.ArgumentParser:
+    return subparsers.add_parser(
+        name, help=help_text, description=help_text, allow_abbrev=False,
+        parents=[SUBCOMMAND_GLOBALS],
+    )
+
+
 def _add(subparsers, name: str, help_text: str) -> argparse.ArgumentParser:
-    parser = subparsers.add_parser(name, help=help_text, description=help_text, allow_abbrev=False)
+    """A subcommand that writes a file, so it also takes -o/--overwrite."""
+    parser = _sub(subparsers, name, help_text)
     parser.add_argument("-o", "--output", dest="output_path", help="explicit destination path")
     parser.add_argument(
         "--overwrite", action="store_true", help="allow --output to replace an existing file"
@@ -64,17 +105,9 @@ def build_parser() -> argparse.ArgumentParser:
             "'generate', which calls a third-party service and says so."
         ),
         allow_abbrev=False,
+        parents=[_global_flags(suppress=False)],
     )
     parser.add_argument("--version", action="version", version=f"mct {__version__}")
-    parser.add_argument(
-        "--log-level", choices=("quiet", "normal", "verbose"), help="override MCT_LOG_LEVEL"
-    )
-    parser.add_argument(
-        "--output-dir", help="override MCT_OUTPUT_DIR for this invocation"
-    )
-    parser.add_argument(
-        "--json", action="store_true", help="print the raw structured result as JSON"
-    )
     sub = parser.add_subparsers(dest="command", metavar="command")
 
     p = _add(sub, "inspect", "Describe a media file without changing it.")
@@ -162,7 +195,7 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--padding", type=int, default=12)
     p.add_argument("--no-labels", action="store_true")
 
-    p = sub.add_parser("compare", help="Compare two images.", allow_abbrev=False)
+    p = _sub(sub, "compare", "Compare two images.")
     p.add_argument("image_a")
     p.add_argument("image_b")
 
@@ -178,10 +211,10 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--height", type=int, default=1024)
     p.add_argument("--seed", type=int)
 
-    sub.add_parser("capabilities", help="What every tool needs and what this machine can run.", allow_abbrev=False)
-    sub.add_parser("presets", help="List the built-in dimension presets.", allow_abbrev=False)
-    sub.add_parser("models", help="List background-removal models and their licences.", allow_abbrev=False)
-    sub.add_parser("serve", help="Start the MCP server on stdio.", allow_abbrev=False)
+    _sub(sub, "capabilities", "What every tool needs and what this machine can run.")
+    _sub(sub, "presets", "List the built-in dimension presets.")
+    _sub(sub, "models", "List background-removal models and their licences.")
+    _sub(sub, "serve", "Start the MCP server on stdio.")
 
     return parser
 

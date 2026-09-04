@@ -368,3 +368,48 @@ def test_every_tool_advertises_a_non_empty_schema_where_it_takes_arguments():
             assert not properties, tool.name
         else:
             assert properties, f"{tool.name} advertises no arguments"
+
+
+# --- global flag placement ---------------------------------------------------
+
+@pytest.mark.parametrize(
+    "argv",
+    [
+        ["--json", "capabilities"],
+        ["capabilities", "--json"],
+    ],
+    ids=["before-subcommand", "after-subcommand"],
+)
+def test_json_works_on_either_side_of_the_subcommand(argv, capsys):
+    """`mct capabilities --json` is the form people actually type, and it used
+    to fail with "unrecognized arguments: --json" because --json was declared
+    only on the top-level parser. CI caught it; nothing local did."""
+    assert main(argv) == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["operation"] == "list_capabilities"
+
+
+def test_output_dir_works_after_the_subcommand(tmp_path, capsys):
+    source = tmp_path / "a.png"
+    Image.new("RGB", (100, 50), (9, 90, 200)).save(source)
+    target = tmp_path / "chosen-dir"
+    assert main(["resize", str(source), "--width", "40", "--height", "40",
+                 "--output-dir", str(target), "--json"]) == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert Path(payload["output_path"]).parent == target
+
+
+def test_a_flag_before_the_subcommand_is_not_reset_by_the_subparser(tmp_path, capsys):
+    """The argparse trap this guards: parent-parser copies with ordinary
+    defaults overwrite whatever was parsed before the subcommand, so
+    `--json capabilities` would silently stop producing JSON."""
+    assert main(["--json", "presets"]) == 0
+    assert json.loads(capsys.readouterr().out)["operation"] == "list_presets"
+
+
+def test_every_subcommand_accepts_the_global_flags_after_it():
+    parser = build_parser()
+    for action in parser._subparsers._group_actions:  # type: ignore[union-attr]
+        for name, sub in action.choices.items():
+            options = {opt for a in sub._actions for opt in a.option_strings}
+            assert {"--json", "--log-level", "--output-dir"} <= options, name
