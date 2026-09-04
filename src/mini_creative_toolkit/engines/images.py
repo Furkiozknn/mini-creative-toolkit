@@ -10,6 +10,7 @@ pixel data is decoded.
 
 from __future__ import annotations
 
+import threading
 import warnings
 from contextlib import contextmanager
 from pathlib import Path
@@ -205,29 +206,60 @@ def fsrcnn_model_path(scale: int) -> Path:
     return path
 
 
+#: Loaded FSRCNN networks, one per scale. Loading the ~40 KB weights into
+#: OpenCV's DNN costs ~600 ms on this machine; the upsample itself costs ~25 ms
+#: for a 256px image. Reloading per call made a batch of 20 spend 12 s loading
+#: the same three files. OpenCV's DNN objects are not documented thread-safe,
+#: so each cached network carries its own lock for the upsample call.
+_FSRCNN_ENGINES: dict[int, tuple[object, threading.Lock]] = {}
+_FSRCNN_LOCK = threading.Lock()
+
+
+def _fsrcnn_engine(scale: int) -> tuple[object, threading.Lock]:
+    """The loaded network for ``scale``, built once per process."""
+    with _FSRCNN_LOCK:
+        cached = _FSRCNN_ENGINES.get(scale)
+        if cached is not None:
+            return cached
+        try:
+            import cv2
+        except ImportError:  # pragma: no cover - opencv is a hard dependency
+            raise MissingDependencyError(
+                "opencv-contrib-python is not installed, so FSRCNN upscaling is unavailable."
+            ) from None
+        if not hasattr(cv2, "dnn_superres"):
+            raise MissingDependencyError(
+                "This OpenCV build has no dnn_superres module. Install "
+                "'opencv-contrib-python' rather than plain 'opencv-python'."
+            )
+        model = fsrcnn_model_path(scale)
+        sr = cv2.dnn_superres.DnnSuperResImpl_create()
+        sr.readModel(str(model))
+        sr.setModel("fsrcnn", scale)
+        entry = (sr, threading.Lock())
+        if get_config().cache_models:
+            _FSRCNN_ENGINES[scale] = entry
+        return entry
+
+
+def clear_model_caches() -> None:
+    """Drop every cached network. Tests use this; so can a memory-constrained host."""
+    with _FSRCNN_LOCK:
+        _FSRCNN_ENGINES.clear()
+
+
 def fsrcnn_upscale(source: Path, destination: Path, scale: int) -> tuple[int, int]:
     """Run FSRCNN super-resolution. Returns the output dimensions."""
-    try:
-        import cv2
-    except ImportError:  # pragma: no cover - opencv is a hard dependency
-        raise MissingDependencyError(
-            "opencv-contrib-python is not installed, so FSRCNN upscaling is unavailable."
-        ) from None
-    if not hasattr(cv2, "dnn_superres"):
-        raise MissingDependencyError(
-            "This OpenCV build has no dnn_superres module. Install "
-            "'opencv-contrib-python' rather than plain 'opencv-python'."
-        )
-    model = fsrcnn_model_path(scale)
+    sr, run_lock = _fsrcnn_engine(scale)
+    import cv2
+
     image = cv2.imread(str(source))
     if image is None:
         raise InvalidInputError(
             f"OpenCV could not decode {source.name}. Convert it to PNG or JPEG first."
         )
-    sr = cv2.dnn_superres.DnnSuperResImpl_create()
-    sr.readModel(str(model))
-    sr.setModel("fsrcnn", scale)
-    result = sr.upsample(image)
+    with run_lock:
+        result = sr.upsample(image)
     if not cv2.imwrite(str(destination), result):
         raise UnsupportedFormatError(f"OpenCV could not write {destination.suffix} output")
     return int(result.shape[1]), int(result.shape[0])

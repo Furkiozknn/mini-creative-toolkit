@@ -11,8 +11,10 @@ from an explicit model name, and a test pins that.
 
 from __future__ import annotations
 
+import threading
 from pathlib import Path
 
+from ..config import get_config
 from ..errors import InvalidInputError, MissingDependencyError, ModelUnavailableError
 from ..log import get_logger
 
@@ -109,6 +111,44 @@ def known_model_names() -> set[str]:
     return names
 
 
+#: Built rembg sessions, one per model name. Constructing a session loads the
+#: ONNX graph and, on first use, downloads the weights: measured at 17.5 s for
+#: u2net on this machine, against 0.7 s for the removal itself. Building one
+#: per call made a batch of 20 spend six minutes loading the same model. ONNX
+#: Runtime documents InferenceSession.run as thread-safe, so a cached session
+#: is shared across batch workers without a lock.
+_SESSIONS: dict[str, object] = {}
+_SESSIONS_LOCK = threading.Lock()
+
+
+def _session_for(model: str, rembg_module) -> object:
+    with _SESSIONS_LOCK:
+        session = _SESSIONS.get(model)
+        if session is not None:
+            return session
+        logger.info("remove_background: building an explicit rembg session for %s", model)
+        try:
+            session = rembg_module.new_session(model)
+        except Exception as exc:
+            # A cold model download that fails (offline, or the weights host
+            # is down) surfaces here. Say which model, and that a download
+            # was involved, rather than leaking a urllib traceback.
+            raise ModelUnavailableError(
+                f"Could not load the rembg model {model!r}. The first use of a model "
+                f"downloads its weights, so this fails offline; after that it is local.",
+                detail=repr(exc),
+            ) from None
+        if get_config().cache_models:
+            _SESSIONS[model] = session
+        return session
+
+
+def clear_session_cache() -> None:
+    """Drop every cached session. Tests use this; so can a memory-constrained host."""
+    with _SESSIONS_LOCK:
+        _SESSIONS.clear()
+
+
 def remove_background(data: bytes, model: str = DEFAULT_MODEL) -> bytes:
     """Cut out the subject. Always with an explicitly constructed session."""
     try:
@@ -123,18 +163,7 @@ def remove_background(data: bytes, model: str = DEFAULT_MODEL) -> bytes:
             f"{', '.join(sorted(available))}. Call list_background_models for details."
         )
 
-    logger.info("remove_background: building an explicit rembg session for %s", model)
-    try:
-        session = rembg.new_session(model)
-    except Exception as exc:
-        # A cold model download that fails (offline, or the weights host is
-        # down) surfaces here. Say which model, and that a download was
-        # involved, rather than leaking a urllib traceback.
-        raise ModelUnavailableError(
-            f"Could not load the rembg model {model!r}. The first use of a model "
-            f"downloads its weights, so this fails offline; after that it is local.",
-            detail=repr(exc),
-        ) from None
+    session = _session_for(model, rembg)
     try:
         return rembg.remove(data, session=session)
     except Exception as exc:
