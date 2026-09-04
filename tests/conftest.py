@@ -16,6 +16,19 @@ from helpers import FFMPEG
 from mini_creative_toolkit.config import Config, reset_config, set_config
 
 
+@pytest.fixture(autouse=True)
+def _fresh_model_caches():
+    """Model caches are process-global; a test that monkeypatches rembg must
+    not be served a real session built by an earlier test."""
+    from mini_creative_toolkit.engines import background, images
+
+    background.clear_session_cache()
+    images.clear_model_caches()
+    yield
+    background.clear_session_cache()
+    images.clear_model_caches()
+
+
 @pytest.fixture
 def config(tmp_path) -> Config:
     """A per-test Config, installed as the process-wide one for the test."""

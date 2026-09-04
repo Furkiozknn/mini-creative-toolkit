@@ -127,6 +127,11 @@ class Config:
     #: every tool instead of a structured dict. Off by default; see README.
     legacy_string_results: bool = False
     subprocess_timeout_seconds: float = 900.0
+    #: Keep loaded models (rembg sessions, FSRCNN networks) in memory between
+    #: calls. Building a rembg session costs ~17 s and ~200 MB; reusing it is
+    #: what makes a batch practical. Set MCT_CACHE_MODELS=0 on a host that
+    #: cannot spare the memory.
+    cache_models: bool = True
 
     @property
     def max_input_bytes(self) -> int:
@@ -160,6 +165,7 @@ class Config:
             "MCT_HTTP_TIMEOUT": self.http_timeout_seconds,
             "MCT_MAX_DOWNLOAD_MB": self.max_download_mb,
             "MCT_LOG_LEVEL": self.log_level,
+            "MCT_CACHE_MODELS": self.cache_models,
         }
 
     @classmethod
@@ -200,6 +206,7 @@ class Config:
             subprocess_timeout_seconds=_env_float(
                 env, "MCT_SUBPROCESS_TIMEOUT", cls.subprocess_timeout_seconds
             ),
+            cache_models=_env_bool(env, "MCT_CACHE_MODELS", True),
         )
 
 
