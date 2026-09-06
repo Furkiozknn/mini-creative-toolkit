@@ -36,6 +36,8 @@ CPU-first. No paid APIs. External network access is isolated to one tool and exp
 
 ## Why this exists
 
+<img src="assets/routing.svg" alt="Routing philosophy: a file entering the server goes down the local path - 22 tools running on this device with rembg, Pillow and ffmpeg - or, for the single generative tool, out to the free Pollinations.ai endpoint. Paid APIs are deliberately never called." width="100%">
+
 Removing a background, fitting an image to 1080×1080, converting a folder to
 WebP, pulling three seconds out of a clip as a GIF, stripping GPS coordinates
 before you share a photo — **none of this needs a model, and none of it needs
@@ -125,6 +127,8 @@ extension claims — and decide from there.
 ---
 
 ## Capability matrix
+
+<img src="assets/tools-grid.svg" alt="All 23 MCP tools grouped by what they use: image, background, upscale, video and audio, inspect and compose, and orchestration - 22 of them never leave this machine, with generate_image_free the one hosted exception" width="100%">
 
 Generated from the same table the MCP tool descriptions use — run
 `mct capabilities` for the live version, including what this machine is
@@ -446,6 +450,8 @@ with `MCT_LOG_LEVEL=verbose` or `--log-level verbose` for the underlying log.
 ---
 
 ## Limitations
+
+<img src="assets/limitation.svg" alt="Known limitation, measured not assumed: upscale_image on integrated Intel graphics stalled at 32 percent and had not finished after 7 minutes, while remove_background, resize, convert and the video tools stay instant on CPU" width="100%">
 
 Stated rather than hidden:
 

@@ -46,7 +46,7 @@
   <text x="40" y="70" font-family="Segoe UI, sans-serif" font-size="13" fill="#e8ddc8" opacity="0.85">upscale_image gerçek ve doğru çalışıyor — ama entegre grafikte pratik değil. Tested and confirmed, not assumed.</text>
 
   <!-- progress bar -->
-  <text x="40" y="120" font-family="'JetBrains Mono','Cascadia Code',Consolas,monospace" font-size="13" fill="#f5efe0">upscale_image · one small icon · Intel UHD (integrated, no discrete GPU)</text>
+  <text x="40" y="104" font-family="'JetBrains Mono','Cascadia Code',Consolas,monospace" font-size="13" fill="#f5efe0">upscale_image · one small icon · Intel UHD (integrated, no discrete GPU)</text>
   <rect x="40" y="135" width="700" height="30" rx="8" fill="#1f1810" stroke="#4a3a24" stroke-width="1.5"/>
   <rect x="40" y="135" width="700" height="30" rx="8" fill="url(#hatch)" opacity="0.5"/>
   <rect x="40" y="135" width="224" height="30" rx="8" fill="url(#stall)" filter="url(#lglow)"/>
