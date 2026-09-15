@@ -444,8 +444,9 @@ GIF is a poor format above a few hundred frames; lower one of them.
 **Something failed and the message is short** — that is deliberate. Re-run
 with `MCT_LOG_LEVEL=verbose` or `--log-level verbose` for the underlying log.
 
-**Files appear in an unexpected place** — set `MCT_OUTPUT_DIR`. The default is
-`output/` inside the repository, preserved from before 2.0.
+**Files appear in an unexpected place** — set `MCT_OUTPUT_DIR`. Run from a
+checkout, the default is `output/` inside the repository, preserved from before
+2.0; installed as a package it is `output/` under the current directory.
 
 ---
 
