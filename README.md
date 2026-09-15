@@ -12,6 +12,12 @@
 <p align="center"><b>Local media operations for MCP clients. Images, video and audio.</b><br>
 CPU-first. No paid APIs. External network access is isolated to one tool and explicitly documented.</p>
 
+<p align="center">
+  <img src="assets/tool-call.svg" alt="One MCP tool call to inspect_media and its response, which reports execution local and network none" width="680">
+</p>
+
+<p align="center"><sub><i>A real call and a real response. <code>"network": "none"</code> is not a claim in this README — the server puts it in the payload, on 22 of its 23 tools.</i></sub></p>
+
 ---
 
 ## Contents
