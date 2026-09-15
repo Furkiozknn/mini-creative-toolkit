@@ -35,6 +35,18 @@ SERVICE_NAME = "Pollinations.ai"
 #: text/html, which is what a proxy or an error page returns - is refused.
 ACCEPTED_TYPES = {"image/jpeg", "image/jpg", "image/png", "image/webp"}
 
+#: Hosts a redirect may land on. The service does redirect - to its own CDN -
+#: so redirects are followed, but blanket ``follow_redirects=True`` would let
+#: any 3xx move this request, prompt and all, to an origin we never chose. The
+#: target is therefore resolved and checked here before it is requested.
+ALLOWED_REDIRECT_HOSTS = frozenset({
+    "image.pollinations.ai",
+    "pollinations.ai",
+})
+
+#: A redirect loop is a failure, not something to keep paying for.
+MAX_REDIRECTS = 5
+
 
 def build_url(prompt: str) -> str:
     """The request URL. Separate from the request so tests can pin escaping."""
@@ -66,13 +78,10 @@ def fetch_image(
     )
 
     owns_client = client is None
-    client = client or httpx.Client(timeout=config.http_timeout_seconds, follow_redirects=True)
+    client = client or httpx.Client(timeout=config.http_timeout_seconds, follow_redirects=False)
     try:
         try:
-            with client.stream("GET", build_url(prompt), params=params) as response:
-                _check_status(response)
-                _check_content_type(response)
-                body = _read_bounded(response, config)
+            body = _get_image(client, build_url(prompt), params, config)
         except httpx.TimeoutException:
             raise NetworkError(
                 f"{SERVICE_NAME} did not respond within {config.http_timeout_seconds:g}s. "
@@ -88,6 +97,47 @@ def fetch_image(
             client.close()
 
     return body, _verify_decodes(body)
+
+
+def _get_image(
+    client: httpx.Client,
+    url: str | httpx.URL,
+    params: dict[str, object] | None,
+    config: Config,
+) -> bytes:
+    """GET the image, following only redirects that stay on the service.
+
+    Redirects are resolved here instead of by ``follow_redirects=True`` so
+    that each hop is checked *before* it is requested - once httpx has
+    followed a 3xx, the prompt has already been sent to whatever origin the
+    ``Location`` header named.
+    """
+    for _ in range(MAX_REDIRECTS + 1):
+        with client.stream("GET", url, params=params, follow_redirects=False) as response:
+            if response.has_redirect_location:
+                url = _checked_redirect(response)
+                params = None  # the Location carries its own query, if any
+                continue
+            _check_status(response)
+            _check_content_type(response)
+            return _read_bounded(response, config)
+    raise NetworkError(
+        f"{SERVICE_NAME} redirected more than {MAX_REDIRECTS} times. Nothing was written."
+    )
+
+
+def _checked_redirect(response: httpx.Response) -> httpx.URL:
+    """Resolve a 3xx ``Location``, refusing any target off the service's hosts."""
+    target = response.url.join(response.headers.get("location", ""))
+    host = (target.host or "").lower()
+    if target.scheme != "https" or host not in ALLOWED_REDIRECT_HOSTS:
+        raise NetworkError(
+            f"{SERVICE_NAME} redirected to "
+            f"{target.scheme or '(no scheme)'}://{host or '(no host)'}, which is not "
+            f"one of its own hosts. The redirect was not followed and nothing was "
+            f"written."
+        )
+    return target
 
 
 def _check_status(response: httpx.Response) -> None:
