@@ -50,9 +50,9 @@
     "videos": []
   },
   "tests": {
-    "count": 326,
-    "source": "`326 passed, 1 skipped`",
-    "measured": "2026-09-15"
+    "count": 327,
+    "source": "`327 passed`",
+    "measured": "2026-09-22"
   },
   "ci": {
     "workflows": [
