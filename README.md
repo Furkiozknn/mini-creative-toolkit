@@ -9,6 +9,10 @@
   <img src="https://img.shields.io/badge/hosted%20tools-1%20of%2023-ff9f5a?style=flat-square" alt="1 of 23 tools is hosted">
 </p>
 
+![mct inspecting a JPEG and then stripping its metadata: has_exif goes from true to false and every removed key is listed, with execution local and network none on both calls](assets/demo.gif)
+
+<sub>Real output. Every tool prints <code>execution</code> and <code>network</code> in its own payload — that is where the "22 of 23 are local" claim is checked, not in this README.</sub>
+
 <p align="center"><b>Local media operations for MCP clients. Images, video and audio.</b><br>
 CPU-first. No paid APIs. External network access is isolated to one tool and explicitly documented.</p>
 
