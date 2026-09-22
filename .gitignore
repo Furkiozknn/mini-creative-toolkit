@@ -30,3 +30,5 @@ secrets.json
 service-account*.json
 *.key
 !*.pub
+# the recorded demo the README shows is committed on purpose
+!assets/demo.gif
