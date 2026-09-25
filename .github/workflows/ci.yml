@@ -178,6 +178,9 @@ jobs:
           uv venv /tmp/deneme
           VIRTUAL_ENV=/tmp/deneme uv pip install dist/*.whl
           test -x /tmp/deneme/bin/mct || { echo "konsol komutu uretilmedi: mct"; exit 1; }
+          # server.json istemcilere `uvx mini-creative-toolkit` diyor; uvx paket
+          # adiyla ayni isimli komutu ariyor.
+          test -x /tmp/deneme/bin/mini-creative-toolkit || { echo "konsol komutu uretilmedi: mini-creative-toolkit"; exit 1; }
           # Sunucu stdio'da sonsuza kadar bloke oldugu icin CALISTIRILMIYOR;
           # hedefin var ve cagrilabilir oldugu dogrulaniyor.
           VIRTUAL_ENV=/tmp/deneme /tmp/deneme/bin/python -c "import mini_creative_toolkit.cli as m; assert callable(m.main), 'main cagrilabilir degil'"

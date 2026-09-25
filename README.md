@@ -20,7 +20,7 @@ CPU-first. No paid APIs. External network access is isolated to one tool and exp
   <img src="assets/tool-call.svg" alt="One MCP tool call to inspect_media and its response, which reports execution local and network none" width="680">
 </p>
 
-<p align="center"><sub><i>A real call and a real response. <code>"network": "none"</code> is not a claim in this README — the server puts it in the payload, on 22 of its 23 tools.</i></sub></p>
+<p align="center"><sub><i>A real call and a real response. <code>"network": "none"</code> is not a claim in this README — the server puts it in the payload, on 21 of its 23 tools. <code>remove_background</code> says <code>"first-run-only"</code> (rembg downloads its weights once); <code>generate_image_free</code> says <code>"required"</code>.</i></sub></p>
 
 ---
 
@@ -233,7 +233,11 @@ configurations need no change. The modern equivalents:
 ```bash
 mct serve
 python -m mini_creative_toolkit
+mini-creative-toolkit          # the console script server.json points uvx at
 ```
+
+Once a release is on PyPI, no checkout is needed:
+`claude mcp add --transport stdio mini-creative-toolkit -- uvx mini-creative-toolkit`.
 
 ---
 

@@ -20,8 +20,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   FSRCNN networks per scale, for the life of the process. `MCT_CACHE_MODELS=0`
   opts out on a host that cannot spare the memory.
 
+- A `mini-creative-toolkit` console script that starts the stdio server. It is
+  what `uvx mini-creative-toolkit` - the launch command `server.json` hands to
+  MCP Registry clients - looks for; before it, the registry entry installed and
+  then failed with "executable not provided".
+
 ### Fixed
 
+- `MCT_ALLOWED_ROOTS` could be sidestepped with a playlist: an HLS `.m3u8`
+  inside an allowed root makes ffmpeg open the segments it lists, wherever they
+  are. Inputs that ffprobe identifies as a playlist or manifest (`hls`, `dash`,
+  `concat`, `imf`) are now refused with an `InvalidInputError`.
+- An explicit `output_path` containing `%` (for example `frame%03d.png`) made
+  ffmpeg's image muxer write a differently named, never-cleaned-up
+  `frame1.part-*.png` and the tool then report "wrote no output". The staging
+  name is now filename-safe; the final name is still exactly the one asked for.
+- "22 of 23 tools report `network: none`" was one too many: `remove_background`
+  reports `first-run-only`, because rembg downloads its weights on first use.
+  `server.json`, the README, the project metadata and two diagrams now say 21,
+  and a test ties that number to the capability table.
 - The default output directory no longer assumes a source checkout. Installed
   non-editably, `output/` is resolved under the current working directory
   instead of inside the interpreter's own tree.

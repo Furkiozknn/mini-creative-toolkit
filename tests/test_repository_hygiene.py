@@ -208,3 +208,41 @@ def test_the_bundled_model_weights_ship_inside_the_package():
 @pytest.mark.parametrize("path", PY_FILES, ids=lambda p: p.name)
 def test_every_module_compiles(path):
     compile(_read(path), str(path), "exec")
+
+
+def test_the_registry_entry_can_actually_be_launched():
+    """server.json tells MCP clients to run ``uvx <identifier>``. uvx runs the
+    console script *named* like the package, so without one the registry
+    entry installs fine and then fails with "executable not provided"."""
+    import json
+    import tomllib
+
+    server = json.loads(_read(REPO_ROOT / "server.json"))
+    scripts = tomllib.loads(_read(REPO_ROOT / "pyproject.toml"))["project"]["scripts"]
+    for package in server["packages"]:
+        if package.get("runtimeHint") != "uvx":
+            continue
+        identifier = package["identifier"]
+        assert scripts.get(identifier) == "mini_creative_toolkit.server:main", (
+            f"`uvx {identifier}` needs a console script called {identifier!r} "
+            f"that starts the stdio server; pyproject declares {sorted(scripts)}"
+        )
+
+
+def test_the_published_network_count_matches_the_capability_table():
+    """"N of them report network: none" is repeated in server.json, the README
+    and the project metadata. It is only true if N is what the table says -
+    remove_background declares first-run-only, because rembg downloads its
+    weights the first time a model is used."""
+    import json
+
+    from mini_creative_toolkit.capabilities import CAPABILITIES, NetworkNeed
+
+    offline = sum(1 for c in CAPABILITIES.values() if c.network is NetworkNeed.NONE)
+    total = len(CAPABILITIES)
+    description = json.loads(_read(REPO_ROOT / "server.json"))["description"]
+    assert f"{offline} of them report network: none" in description, description
+    readme = _read(REPO_ROOT / "README.md")
+    assert f"on {offline} of its {total} tools" in readme
+    summary = json.loads(_read(REPO_ROOT / "project-meta.json"))["summary"]
+    assert f"{offline} of them report" in summary, summary
