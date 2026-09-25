@@ -308,3 +308,17 @@ def test_readme_registration_commands_do_not_depend_on_the_current_directory():
         if "--from" in words:
             assert words[words.index("--from") + 2] in scripts, command
         assert not any(w.endswith(".py") for w in words), command
+
+
+def test_every_published_test_count_agrees():
+    """The profile site's generator warned "326 vs 327": project-meta.json's
+    summary and tests.count had drifted apart. Summary, tests.count,
+    tests.source and the banner must state the same number (whether that
+    number is still current is checked by running the suite, not here)."""
+    import json
+
+    meta = json.loads(_read(REPO_ROOT / "project-meta.json"))
+    count = meta["tests"]["count"]
+    assert re.search(rf"\b{count} tests\.", meta["summary"]), meta["summary"]
+    assert meta["tests"]["source"] == f"`{count} passed`"
+    assert f">{count} tests<" in _read(REPO_ROOT / "assets" / "banner.svg")
