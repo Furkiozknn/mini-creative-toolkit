@@ -46,6 +46,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and the capability table marks `batch_process` `first-run-only`, so the
   published count is 20, not 21. A test now checks every README matrix row's
   Network cell against the table, not just that the tool is mentioned.
+- `server.json` could not have been published: its 251-character
+  `description` is over the MCP Registry schema's 100-character limit, and it
+  advertised "caption video", which no tool does. It is now 88 characters, and
+  a test checks the limit, the `mcp-name` marker and the version match.
 - The default output directory no longer assumes a source checkout. Installed
   non-editably, `output/` is resolved under the current working directory
   instead of inside the interpreter's own tree.

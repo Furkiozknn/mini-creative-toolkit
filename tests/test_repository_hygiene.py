@@ -177,6 +177,23 @@ def test_the_readme_matrix_network_column_matches_each_tool():
         assert cell.startswith(expected[CAPABILITIES[name].network]), (name, cell)
 
 
+def test_server_json_fits_the_mcp_registry_schema_limits():
+    """The registry's server.schema.json (2025-12-11) caps ``description`` at
+    100 characters; the 251-character one this file used to carry would have
+    been rejected on publish. Checked here without fetching the schema."""
+    import json
+
+    server = json.loads(_read(REPO_ROOT / "server.json"))
+    assert 1 <= len(server["description"]) <= 100, len(server["description"])
+    assert server["name"].startswith("io.github.Furkiozknn/")
+    readme = _read(REPO_ROOT / "README.md")
+    assert f"<!-- mcp-name: {server['name']} -->" in readme
+    import tomllib
+
+    version = tomllib.loads(_read(REPO_ROOT / "pyproject.toml"))["project"]["version"]
+    assert server["version"] == version
+    assert all(p["version"] == version for p in server["packages"])
+
 
 def test_the_readme_discloses_the_hosted_tool_rather_than_claiming_to_be_offline():
     """Asserted positively on purpose. A blacklist of overclaim phrases matches
