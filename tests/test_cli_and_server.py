@@ -453,3 +453,20 @@ def test_every_subcommand_accepts_the_global_flags_after_it():
         for name, sub in action.choices.items():
             options = {opt for a in sub._actions for opt in a.option_strings}
             assert {"--json", "--log-level", "--output-dir"} <= options, name
+
+
+def test_cli_capabilities_is_readable_without_json(capsys):
+    """`uv run mct capabilities` is the first command the README's install
+    section runs. It used to print each tool as one ~450-character JSON blob
+    on a single line; now it is one row per tool plus the reasons a tool is
+    blocked, and `--json` still gives the full payload."""
+    assert main(["capabilities"]) == 0
+    out = capsys.readouterr().out
+    lines = out.splitlines()
+    for name in CAPABILITIES:
+        rows = [line for line in lines if not line.startswith(" ") and line.split()[:1] == [name]]
+        assert len(rows) == 1, name
+        assert len(rows[0]) < 120, rows[0]
+    assert '{"tool"' not in out
+    assert "generate_image_free" in out and "required" in out
+    assert not any(line.lstrip().startswith("tools: [") for line in lines)

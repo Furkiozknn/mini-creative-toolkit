@@ -32,6 +32,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   input schema, and `initialize` reports the server's real version instead of
   an empty string.
 
+- `mct capabilities` without `--json` prints one row per tool (ready, network,
+  GPU, what it needs) and the reasons anything is blocked, instead of one
+  ~450-character JSON blob per tool.
+
 ### Fixed
 
 - `MCT_ALLOWED_ROOTS` could be sidestepped with a playlist: an HLS `.m3u8`
