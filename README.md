@@ -22,6 +22,18 @@ CPU-first. No paid APIs. External network access is isolated to one tool and exp
 
 <p align="center"><sub><i>A real call and a real response. <code>"network": "none"</code> is not a claim in this README — the server puts it in the payload, on 20 of its 23 tools. <code>remove_background</code> says <code>"first-run-only"</code> (rembg downloads its weights once), and so does <code>batch_process</code> when that is the operation it runs; <code>generate_image_free</code> says <code>"required"</code>.</i></sub></p>
 
+**Quick start.** With [uv](https://docs.astral.sh/uv/) installed (and ffmpeg for
+the video tools), one command gives Claude Code all 23 tools, no checkout needed:
+
+```bash
+claude mcp add --transport stdio mini-creative-toolkit -- \
+  uvx --from git+https://github.com/Furkiozknn/mini-creative-toolkit mini-creative-toolkit
+```
+
+Then ask: *"Inspect ~/Pictures/photo.jpg, strip its metadata, and fit it to
+1080×1080."* Results land in `output/` under the directory Claude Code runs in.
+Not sure what your machine can run? Ask Claude Code to call `list_capabilities`.
+
 ---
 
 ## Contents
@@ -409,9 +421,18 @@ that. What it *does* guarantee:
 - **Paths are resolved before they are checked.** `resolve()` collapses `..`
   and follows symlinks first, so neither traversal nor a planted symlink can
   escape a configured allowed root.
-- **Nothing overwrites your input.** Writes are staged to a temporary sibling
-  and renamed into place only on success, so a crashed ffmpeg leaves no
-  truncated file and no orphaned GIF palette.
+- **Nothing overwrites an existing file unless you say so.** Writes are staged
+  to a temporary sibling and committed only on success, so a crashed ffmpeg
+  leaves no truncated file and no orphaned GIF palette; without
+  `overwrite=true` the commit refuses a name that already exists, even one that
+  appeared mid-run. Your input is replaced only if you name it as `output_path`
+  *and* pass `overwrite=true`.
+- **Dependencies stay quiet too.** onnxruntime (under rembg) ships with
+  telemetry on; the package sets `ORT_DISABLE_TELEMETRY=1` before it can load,
+  so the `network: none` in a payload also covers what a dependency would
+  have sent.
+- **Sizes are bounded both ways.** `MCT_MAX_IMAGE_PIXELS` applies to images
+  read *and* to the image a resize, upscale or contact sheet would create.
 - **The hosted response is never trusted.** Status, content type, a streaming
   byte budget, and an actual decode — an HTML error page served with HTTP 200
   is refused rather than written out as a `.jpg`.
