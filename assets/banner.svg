@@ -1,39 +1,17 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 250" width="1200" height="250" role="img" aria-label="mini-creative-toolkit - 23 local media tools behind one MCP server">
-<defs>
-  <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
-    <stop offset="0%" stop-color="#17161d"/><stop offset="58%" stop-color="#0e0d12"/><stop offset="100%" stop-color="#0b0b0f"/>
-  </linearGradient>
-  <linearGradient id="name" x1="0%" y1="0%" x2="100%" y2="0%">
-    <stop offset="0%" stop-color="#f2efe6"/><stop offset="62%" stop-color="#e7dcc0"/><stop offset="100%" stop-color="#c9a961"/>
-  </linearGradient>
-  <linearGradient id="hair" x1="0%" y1="0%" x2="100%" y2="0%">
-    <stop offset="0%" stop-color="#c9a961" stop-opacity="0.5"/><stop offset="100%" stop-color="#c9a961" stop-opacity="0"/>
-  </linearGradient>
-  <filter id="glow" x="-80%" y="-80%" width="260%" height="260%">
-    <feGaussianBlur stdDeviation="3.5" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
-  </filter>
-</defs>
-<rect width="1200" height="250" fill="url(#bg)"/><text x="54" y="96" font-family="'Cascadia Code','JetBrains Mono','SFMono-Regular',Consolas,'Liberation Mono',Menlo,monospace" font-weight="700" font-size="42" fill="url(#name)" letter-spacing="-1">mini-creative-toolkit</text>
-<text x="56" y="132" font-family="'Segoe UI',Verdana,Helvetica,sans-serif" font-size="17" fill="#c7c2b6" opacity="0.92">23 CPU-first media tools behind one MCP server.</text>
-<line x1="56" y1="152" x2="330" y2="152" stroke="url(#hair)" stroke-width="1.5"/><rect x="56" y="176" width="93" height="26" rx="13" fill="#141419" stroke="#4ade9e" stroke-opacity="0.45"/>
-<text x="102" y="193" text-anchor="middle" font-family="'Cascadia Code','JetBrains Mono','SFMono-Regular',Consolas,'Liberation Mono',Menlo,monospace" font-size="12" fill="#4ade9e">353 tests</text>
-<rect x="159" y="176" width="70" height="26" rx="13" fill="#141419" stroke="#c9a961" stroke-opacity="0.45"/>
-<text x="194" y="193" text-anchor="middle" font-family="'Cascadia Code','JetBrains Mono','SFMono-Regular',Consolas,'Liberation Mono',Menlo,monospace" font-size="12" fill="#c9a961">no GPU</text>
-<rect x="239" y="176" width="100" height="26" rx="13" fill="#141419" stroke="#c9a961" stroke-opacity="0.45"/>
-<text x="289" y="193" text-anchor="middle" font-family="'Cascadia Code','JetBrains Mono','SFMono-Regular',Consolas,'Liberation Mono',Menlo,monospace" font-size="12" fill="#c9a961">no API key</text>
-<rect x="349" y="176" width="263" height="26" rx="13" fill="#141419" stroke="#6cb6ff" stroke-opacity="0.45"/>
-<text x="480" y="193" text-anchor="middle" font-family="'Cascadia Code','JetBrains Mono','SFMono-Regular',Consolas,'Liberation Mono',Menlo,monospace" font-size="12" fill="#6cb6ff">22 of 23 run on this machine</text><rect x="826" y="86" width="74" height="40" rx="8" fill="#141419" stroke="#2a2a33"/>
-<text x="863" y="111" text-anchor="middle" font-family="'Cascadia Code','JetBrains Mono','SFMono-Regular',Consolas,'Liberation Mono',Menlo,monospace" font-size="12" fill="#9a9aa6">in</text>
-<rect x="922" y="86" width="74" height="40" rx="8" fill="#141419" stroke="#2a2a33"/>
-<text x="959" y="111" text-anchor="middle" font-family="'Cascadia Code','JetBrains Mono','SFMono-Regular',Consolas,'Liberation Mono',Menlo,monospace" font-size="12" fill="#9a9aa6">cpu</text>
-<rect x="1018" y="86" width="74" height="40" rx="8" fill="#141419" stroke="#2a2a33"/>
-<text x="1055" y="111" text-anchor="middle" font-family="'Cascadia Code','JetBrains Mono','SFMono-Regular',Consolas,'Liberation Mono',Menlo,monospace" font-size="12" fill="#9a9aa6">out</text>
-<line x1="900" y1="106" x2="922" y2="106" stroke="#4ade9e" stroke-width="1.5"/>
-<path d="M922 106 l-6 -3.5 v7 z" fill="#4ade9e"/>
-<line x1="996" y1="106" x2="1018" y2="106" stroke="#4ade9e" stroke-width="1.5"/>
-<path d="M1018 106 l-6 -3.5 v7 z" fill="#4ade9e"/>
-<rect x="806" y="66" width="306" height="80" rx="12" fill="none" stroke="#4ade9e" stroke-opacity="0.35" stroke-dasharray="4 4"/>
-<text x="959" y="60" text-anchor="middle" font-family="'Cascadia Code','JetBrains Mono','SFMono-Regular',Consolas,'Liberation Mono',Menlo,monospace" font-size="11.5" fill="#4ade9e">this machine</text>
-<line x1="1095" y1="106" x2="1140" y2="106" stroke="#d7d75f" stroke-width="1.5" stroke-dasharray="3 3"/>
-<path d="M1140 106 l-6 -3.5 v7 z" fill="#d7d75f"/>
-<text x="1118" y="132" text-anchor="middle" font-family="'Cascadia Code','JetBrains Mono','SFMono-Regular',Consolas,'Liberation Mono',Menlo,monospace" font-size="11" fill="#d7d75f">1 of 23</text><text x="56" y="228" font-family="'Cascadia Code','JetBrains Mono','SFMono-Regular',Consolas,'Liberation Mono',Menlo,monospace" font-size="12" fill="#5c5c68">Background removal, resize, thumbnails, GIFs, video trim — and the README names the one tool that goes out.</text></svg>
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="320" viewBox="0 0 1280 320" role="img" aria-labelledby="t d">
+<!-- generated by github.com/Furkiozknn/Furkiozknn assets/banner/banner.py; edit banners.json there, not this file -->
+<title id="t">mini-creative-toolkit</title><desc id="d">CPU-first media tools behind one MCP server. Each response says whether it used the network.</desc>
+<defs><radialGradient id="g" cx="1" cy="0" r="0.9"><stop offset="0" stop-color="#3fb950" stop-opacity=".16"/><stop offset="1" stop-color="#3fb950" stop-opacity="0"/></radialGradient>
+<style>.u{font:700 13px/1 -apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,'DejaVu Sans',sans-serif;letter-spacing:.22em;fill:#d4a95c}.n{font:700 48px/1 ui-monospace,SFMono-Regular,'SF Mono',Menlo,Consolas,'DejaVu Sans Mono',monospace;fill:#f2efe6}
+.p{font:400 21px/1 -apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,'DejaVu Sans',sans-serif;fill:#c9d1d9}.c{fill:none;stroke:#3fb950;stroke-opacity:.55}.ct{font:600 13px/1 ui-monospace,SFMono-Regular,'SF Mono',Menlo,Consolas,'DejaVu Sans Mono',monospace;fill:#3fb950}
+.k{font:400 13px/1 ui-monospace,SFMono-Regular,'SF Mono',Menlo,Consolas,'DejaVu Sans Mono',monospace;fill:#7d8590}.d{font:500 14px/1 ui-monospace,SFMono-Regular,'SF Mono',Menlo,Consolas,'DejaVu Sans Mono',monospace;fill:#e6edf3}.f{font:400 12px/1 ui-monospace,SFMono-Regular,'SF Mono',Menlo,Consolas,'DejaVu Sans Mono',monospace;fill:#484f58}</style></defs>
+<rect width="1280" height="320" rx="14" fill="#0d1117"/><rect width="1280" height="320" rx="14" fill="url(#g)"/>
+<rect x="0.5" y="0.5" width="1279" height="319" rx="13.5" fill="none" stroke="#30363d"/>
+<rect x="72" y="0" width="140" height="4" fill="#3fb950"/>
+<text x="72" y="64" class="u">MCP SERVER</text>
+<text x="72" y="124" class="n" textLength="609" lengthAdjust="spacingAndGlyphs">mini-creative-toolkit</text>
+<text x="72" y="176" class="p">CPU-first media tools behind one MCP server.</text><text x="72" y="206" class="p">Each response says whether it used the network.</text><rect x="72" y="244" width="70" height="30" rx="15" class="c"/><text x="107" y="264" class="ct" text-anchor="middle">no GPU</text><rect x="152.4" y="244" width="104" height="30" rx="15" class="c"/><text x="204" y="264" class="ct" text-anchor="middle">no API key</text><rect x="266.4" y="244" width="230" height="30" rx="15" class="c"/><text x="381" y="264" class="ct" text-anchor="middle">network reported per call</text>
+<line x1="790" y1="60" x2="790" y2="260" stroke="#30363d"/>
+<circle cx="826" cy="96" r="4" fill="#3fb950" opacity="1.00"/><text x="842" y="101" class="k">edits</text><text x="930" y="101" class="d">resize, crop, convert, strip EXIF</text><circle cx="826" cy="134" r="4" fill="#3fb950" opacity="0.85"/><text x="842" y="139" class="k">cuts</text><text x="930" y="139" class="d">background removal on CPU</text><circle cx="826" cy="172" r="4" fill="#3fb950" opacity="0.70"/><text x="842" y="177" class="k">video</text><text x="930" y="177" class="d">trim, GIFs, thumbnails</text><circle cx="826" cy="210" r="4" fill="#3fb950" opacity="0.55"/><text x="842" y="215" class="k">reports</text><text x="930" y="215" class="d">&quot;network&quot;: &quot;none&quot; in payload</text><circle cx="826" cy="248" r="4" fill="#3fb950" opacity="0.40"/><text x="842" y="253" class="k">refuses</text><text x="930" y="253" class="d">non-commercial model by default</text>
+<text x="1208" y="290" class="f" text-anchor="end">github.com/Furkiozknn/mini-creative-toolkit</text>
+</svg>
