@@ -28,10 +28,13 @@ def remove_background(
     width, height, _ = images.header_size(source)
     images.check_pixel_budget(width, height, source, config)
 
+    # Before the model runs: a cold session load is ~17 s and may download
+    # weights, which is a poor price for "that file already exists".
+    destination = manager.resolve_explicit(output_path, overwrite) if output_path else None
+
     payload = source.read_bytes()
     output_bytes = engine.remove_background(payload, model)
 
-    destination = manager.resolve_explicit(output_path, overwrite) if output_path else None
     with manager.stage("nobg", "png", destination) as staged:
         staged.tmp.write_bytes(output_bytes)
 

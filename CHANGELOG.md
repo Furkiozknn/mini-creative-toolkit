@@ -14,14 +14,100 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.1.0] - 2026-09-25
+
+The first version meant to be published: `server.json` now passes the MCP
+Registry schema, `uvx` has a console script to run, and the network claims in
+every payload were re-measured under `strace`.
+
 ### Added
 
 - Model reuse across calls: `rembg` sessions are cached per model name and
   FSRCNN networks per scale, for the life of the process. `MCT_CACHE_MODELS=0`
   opts out on a host that cannot spare the memory.
 
+- A `mini-creative-toolkit` console script that starts the stdio server. It is
+  what `uvx mini-creative-toolkit` - the launch command `server.json` hands to
+  MCP Registry clients - looks for; before it, the registry entry installed and
+  then failed with "executable not provided".
+
+- MCP tool annotations derived from the capability table: `readOnlyHint` on
+  the five tools that write nothing, `openWorldHint` on the three that can reach
+  the network. The shared parameters (`image_path`, `video_path`, `path`,
+  `output_path`, `overwrite`, timestamps) now carry descriptions in each tool's
+  input schema, and `initialize` reports the server's real version instead of
+  an empty string.
+
+- Every other tool parameter now has a description in its input schema too:
+  46 of them had only a name and a type, so a model saw `crf` with no range,
+  `width` with no unit and `loop` with no hint that `-1` means play once. Each
+  now states its unit, range, default or allowed values, and a test fails if
+  any tool parameter is left undescribed.
+
+- `mct capabilities` without `--json` prints one row per tool (ready, network,
+  GPU, what it needs) and the reasons anything is blocked, instead of one
+  ~450-character JSON blob per tool.
+
 ### Fixed
 
+- `convert_format` wrote TIFF, BMP and GIF when asked, although it offers
+  only png, jpeg, webp and avif: it checked what Pillow can encode rather than
+  the toolkit's own output set. Those names are now refused with an
+  `UnsupportedFormatError` listing the four formats.
+- `upscale_image_auto` accepts scales up to 8, but with Upscayl configured and
+  a discrete GPU present it sent x5-x8 to Real-ESRGAN, whose models exist only
+  for x2/x3/x4, and the call failed. Those scales now use Lanczos and the
+  selection reason says why, as they already did when FSRCNN was chosen.
+- onnxruntime's telemetry is switched off. Its official Linux wheel (1.29.0
+  here) connects to `mobile.events.data.microsoft.com` as soon as it is
+  imported, and rembg imports it - so `list_background_models`, and any tool
+  called later in the same server process, made a connection while reporting
+  `network: none` (seen under `strace`). The package now sets
+  `ORT_DISABLE_TELEMETRY=1` on import unless the variable is already set; with
+  it, `strace` over a call to every local tool shows no `AF_INET` connection.
+
+- `MCT_ALLOWED_ROOTS` could be sidestepped with a playlist: an HLS `.m3u8`
+  inside an allowed root makes ffmpeg open the segments it lists, wherever they
+  are. Inputs that ffprobe identifies as a playlist or manifest (`hls`, `dash`,
+  `concat`, `imf`) are now refused with an `InvalidInputError`.
+- An explicit `output_path` containing `%` (for example `frame%03d.png`) made
+  ffmpeg's image muxer write a differently named, never-cleaned-up
+  `frame1.part-*.png` and the tool then report "wrote no output". The staging
+  name is now filename-safe; the final name is still exactly the one asked for.
+- "22 of 23 tools report `network: none`" was one too many: `remove_background`
+  reports `first-run-only`, because rembg downloads its weights on first use.
+  `server.json`, the README, the project metadata and two diagrams now say 21,
+  and a test ties that number to the capability table.
+- `batch_process` still printed `"network": "none"` when its operation was
+  `remove_background`, which downloads rembg weights on first use (seen with a
+  clean `U2NET_HOME`: the batch fetched `u2netp.onnx` from GitHub and reported
+  `none`). The payload now reports the network need of the operation that ran,
+  and the capability table marks `batch_process` `first-run-only`, so the
+  published count is 20, not 21. A test now checks every README matrix row's
+  Network cell against the table, not just that the tool is mentioned.
+- `server.json` could not have been published: its 251-character
+  `description` is over the MCP Registry schema's 100-character limit, and it
+  advertised "caption video", which no tool does. It is now 88 characters, and
+  a test checks the limit, the `mcp-name` marker and the version match.
+- `overwrite=false` is now enforced at the moment the result is committed,
+  not only when the call starts: a file that appeared at `output_path` during
+  a long ffmpeg run used to be silently replaced by `os.replace`. The commit is
+  now an atomic `os.link`, which refuses an existing name.
+- `generate_image_free` validates `output_path` before the prompt is sent, and
+  `remove_background` before the model loads, so an unusable destination fails
+  first instead of after a third-party request or a model download.
+- The README's Claude Code registration command,
+  `uv run --project /path/to/repo toolkit.py`, only connected when Claude Code
+  was started inside the repository: uv resolves `toolkit.py` against the
+  current directory. It now runs the `mini-creative-toolkit` console script,
+  the README also shows a no-checkout `uvx --from git+...` form, and CI starts
+  the documented command from another directory and checks `tools/list`.
+- `MCT_MAX_IMAGE_PIXELS` guarded what a tool read but not what `resize_image`,
+  `optimize_media` or `create_contact_sheet` would create:
+  `resize_image(<200x120 png>, 100000, 100000)` asked Pillow for an ~18 GB
+  canvas (MemoryError under a 3 GB limit; without one, the test process was
+  killed). The target size is now checked against the same budget first, as
+  the upscalers already did.
 - The default output directory no longer assumes a source checkout. Installed
   non-editably, `output/` is resolved under the current working directory
   instead of inside the interpreter's own tree.

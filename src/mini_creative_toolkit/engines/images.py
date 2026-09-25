@@ -77,6 +77,14 @@ def writable_formats() -> list[str]:
 
 
 def require_writable(fmt: str) -> str:
+    # Pillow can also write TIFF, BMP and GIF, and canonical_format knows their
+    # names because they are readable. Being able to encode a format is not the
+    # same as this tool offering it: the output set is WRITABLE, nothing wider.
+    if fmt not in {FORMAT_ALIASES[name] for name in WRITABLE}:
+        raise UnsupportedFormatError(
+            f"{fmt} is readable but not an output format of this toolkit. Choose "
+            f"one of: {', '.join(WRITABLE)}."
+        )
     Image.init()
     if fmt not in Image.SAVE:
         raise UnsupportedFormatError(
@@ -109,6 +117,26 @@ def check_pixel_budget(width: int, height: int, path: Path, config: Config | Non
             f"{config.max_image_pixels:,} pixel limit. Decoding it would allocate "
             f"roughly {pixels * 4 / 1024 / 1024:.0f} MB. Raise MCT_MAX_IMAGE_PIXELS "
             f"if this file is legitimate.",
+            limit_name="MCT_MAX_IMAGE_PIXELS",
+            limit_value=config.max_image_pixels,
+            actual=pixels,
+        )
+
+
+def check_output_pixels(width: int, height: int, what: str, config: Config | None = None) -> None:
+    """The same budget for what a tool is about to *create*.
+
+    Reading is guarded by :func:`check_pixel_budget`; an enlargement is not,
+    and a 200x120 PNG resized to fit 100000x100000 asks Pillow for ~18 GB.
+    """
+    config = config or get_config()
+    pixels = width * height
+    if pixels > config.max_image_pixels:
+        raise ResourceLimitError(
+            f"{what} would be {width}x{height} = {pixels:,} pixels, above the "
+            f"{config.max_image_pixels:,} pixel limit (roughly "
+            f"{pixels * 4 / 1024 / 1024:.0f} MB in memory). Ask for smaller "
+            f"dimensions, or raise MCT_MAX_IMAGE_PIXELS if you really need it.",
             limit_name="MCT_MAX_IMAGE_PIXELS",
             limit_value=config.max_image_pixels,
             actual=pixels,

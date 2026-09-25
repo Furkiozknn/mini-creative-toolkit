@@ -88,6 +88,9 @@ Paths from an MCP client are untrusted input. Resolution is:
 4. A single `stat()` decides existence, type and size. Directories, FIFOs,
    devices and sockets are refused — ffmpeg would block forever on a FIFO.
 5. Enforce `MCT_MAX_INPUT_MB`.
+6. For audio and video, refuse anything ffprobe identifies as a playlist or
+   manifest (`hls`, `dash`, `concat`, `imf`). Those formats name *other* files
+   that ffmpeg then opens itself, which the root check above never sees.
 
 **`MCT_ALLOWED_ROOTS` is unset by default.** That is the historical behaviour
 and it is stated here rather than disguised: with no roots configured, the
@@ -105,10 +108,17 @@ Multiple roots are separated by the platform path separator (`:` on Unix,
 
 ## Output handling
 
-- Outputs go to `MCT_OUTPUT_DIR`, default `output/` in the repository.
-- **Nothing ever overwrites the input.** Every operation writes a new file.
-- An explicit `output_path` will not replace an existing file unless you also
+- Outputs go to `MCT_OUTPUT_DIR`. The default is `output/` in the repository
+  when running from a checkout, and `output/` under the server's working
+  directory when installed (for example with `uvx`).
+- **By default nothing overwrites the input.** Every operation writes a new
+  file; the only way to replace the input is to name it as `output_path` *and*
   pass `overwrite=true`.
+- An explicit `output_path` will not replace an existing file unless you also
+  pass `overwrite=true`. This holds at the moment of writing, not only at the
+  start of the call: the result is committed with an atomic hard link that
+  refuses an existing name, so a file that appears at that path while ffmpeg
+  is still running is left alone and the call fails instead.
 - Writes are staged: the engine writes to a sibling temporary file, and it is
   renamed into place only after the operation succeeds and passes the output
   size check. A crashed ffmpeg leaves no truncated `.mp4` behind, and no
@@ -129,7 +139,7 @@ tell "this file is too big" from "this tool is broken".
 | --- | --- | --- |
 | `MCT_MAX_INPUT_MB` | 512 | Reading an enormous file into memory |
 | `MCT_MAX_OUTPUT_MB` | 1024 | Producing one |
-| `MCT_MAX_IMAGE_PIXELS` | 80,000,000 | Decompression bombs. Checked from the header **before** pixels are decoded |
+| `MCT_MAX_IMAGE_PIXELS` | 80,000,000 | Decompression bombs. Checked from the header **before** pixels are decoded - and, for resize, optimise, upscale and contact sheets, against the size of the image about to be *created* |
 | `MCT_MAX_VIDEO_DURATION` | 3600s | Multi-hour transcodes |
 | `MCT_MAX_VIDEO_WIDTH` / `_HEIGHT` | 7680 | Absurd resolutions |
 | `MCT_MAX_BATCH_ITEMS` | 200 | Unbounded batches |
@@ -177,12 +187,25 @@ in the toolkit is affected.
 - **FSRCNN weights ship inside the package.** Nothing is downloaded.
 - **rembg downloads ONNX weights on first use** of a model it has not cached.
   This is disclosed in the tool description and in `list_capabilities`, where
-  `remove_background` is marked `network: first-run-only`.
+  `remove_background` is marked `network: first-run-only` - as is
+  `batch_process`, whose payload reports `first-run-only` when its operation
+  is `remove_background` and `none` otherwise.
 - **Upscayl is never downloaded.** Both its binary and its models must already
   exist on your machine and be pointed at by `UPSCAYL_BIN_PATH` and
   `UPSCAYL_MODELS_PATH`. The toolkit will not fetch or install them.
 
 The toolkit never downloads and executes a binary.
+
+## Dependency telemetry
+
+onnxruntime (pulled in by rembg) ships with telemetry **on** in its official
+Linux and macOS wheels: importing it starts an uploader that connects to
+`mobile.events.data.microsoft.com`. Observed with onnxruntime 1.29.0 under
+`strace`, including from `list_background_models`, a tool that reports
+`network: none`. The package therefore sets `ORT_DISABLE_TELEMETRY=1`, the
+switch onnxruntime documents in its `Privacy.md`, when it is imported and before
+anything can import onnxruntime; with it set, the same trace shows no
+connection. If you set `ORT_DISABLE_TELEMETRY` yourself, your value is kept.
 
 ---
 
@@ -239,7 +262,10 @@ useless.
 
 ## Reporting a problem
 
-Open an issue at
-<https://github.com/Furkiozknn/mini-creative-toolkit/issues>. For anything you
-believe is genuinely exploitable, please describe the impact rather than
-posting a working exploit in a public issue.
+For anything you believe is exploitable, report it privately through GitHub
+Security Advisories:
+<https://github.com/Furkiozknn/mini-creative-toolkit/security/advisories/new>.
+Describe the impact and the smallest input that shows it.
+
+Everything else - a wrong error message, a limit that is too strict - is a
+normal issue at <https://github.com/Furkiozknn/mini-creative-toolkit/issues>.

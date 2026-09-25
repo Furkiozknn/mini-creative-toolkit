@@ -20,7 +20,19 @@ CPU-first. No paid APIs. External network access is isolated to one tool and exp
   <img src="assets/tool-call.svg" alt="One MCP tool call to inspect_media and its response, which reports execution local and network none" width="680">
 </p>
 
-<p align="center"><sub><i>A real call and a real response. <code>"network": "none"</code> is not a claim in this README — the server puts it in the payload, on 22 of its 23 tools.</i></sub></p>
+<p align="center"><sub><i>A real call and a real response. <code>"network": "none"</code> is not a claim in this README — the server puts it in the payload, on 20 of its 23 tools. <code>remove_background</code> says <code>"first-run-only"</code> (rembg downloads its weights once), and so does <code>batch_process</code> when that is the operation it runs; <code>generate_image_free</code> says <code>"required"</code>.</i></sub></p>
+
+**Quick start.** With [uv](https://docs.astral.sh/uv/) installed (and ffmpeg for
+the video tools), one command gives Claude Code all 23 tools, no checkout needed:
+
+```bash
+claude mcp add --transport stdio mini-creative-toolkit -- \
+  uvx --from git+https://github.com/Furkiozknn/mini-creative-toolkit mini-creative-toolkit
+```
+
+Then ask: *"Inspect ~/Pictures/photo.jpg, strip its metadata, and fit it to
+1080×1080."* Results land in `output/` under the directory Claude Code runs in.
+Not sure what your machine can run? Ask Claude Code to call `list_capabilities`.
 
 ---
 
@@ -138,7 +150,7 @@ extension claims — and decide from there.
 
 ## Capability matrix
 
-<img src="assets/tools-grid.svg" alt="All 23 MCP tools grouped by what they use: image, background, upscale, video and audio, inspect and compose, and orchestration - 22 of them never leave this machine, with generate_image_free the one hosted exception" width="100%">
+<img src="assets/tools-grid.svg" alt="All 23 MCP tools grouped by what they use: image, background, upscale, video and audio, inspect and compose, and orchestration - 22 of them run on this machine, with generate_image_free the one hosted exception" width="100%">
 
 Generated from the same table the MCP tool descriptions use — run
 `mct capabilities` for the live version, including what this machine is
@@ -164,14 +176,16 @@ actually missing.
 | `extract_audio` | yes | no | no | `ffmpeg` | yes |
 | `inspect_media` | yes | no | no | `ffprobe` (AV only) | yes |
 | `optimize_media` | yes | no | no | `ffmpeg` (video only) | yes |
-| `batch_process` | yes | no | no | per operation | yes |
+| `batch_process` | yes | first run only (`remove_background` only) | no | per operation | yes |
 | `list_capabilities` | yes | no | no | no | yes |
 | `list_background_models` | yes | no | no | no | yes |
 | `list_presets` | yes | no | no | no | yes |
 | `generate_image_free` | **no** | **required** | no | no | **no** |
 
 "first run only" is not a hedge: rembg downloads a model's ONNX weights the
-first time that model is used, then never again. "per model" means
+first time that model is used, then never again. `batch_process` inherits that
+only when its operation is `remove_background`; its payload reports the
+network need of the operation it actually ran. "per model" means
 `remove_background` is reproducible for a given model but different models
 give different cut-outs.
 
@@ -186,11 +200,27 @@ conflating them sends you looking for a problem you do not have:
 
 ## Install
 
+You need [uv](https://docs.astral.sh/uv/) and, for the video and audio tools,
+ffmpeg. There are two ways in; both give Claude Code the same 23 tools.
+
+**Without a checkout.** uv fetches the package from GitHub and starts the
+server; nothing is installed globally:
+
 ```bash
-uv sync
+claude mcp add --transport stdio mini-creative-toolkit -- \
+  uvx --from git+https://github.com/Furkiozknn/mini-creative-toolkit mini-creative-toolkit
 ```
 
-That installs the package and its five dependencies. The FSRCNN weights
+**From a checkout**, which also gives you the `mct` CLI:
+
+```bash
+git clone https://github.com/Furkiozknn/mini-creative-toolkit
+cd mini-creative-toolkit
+uv sync
+uv run mct capabilities          # what this machine can run, and what is missing
+```
+
+`uv sync` installs the package and its five dependencies. The FSRCNN weights
 (~120 KB total) ship inside the package — nothing to download.
 
 **ffmpeg and ffprobe must be on your PATH** for every video and audio tool,
@@ -223,24 +253,46 @@ variables — and every other tool keeps working. Skip this entirely and use
 
 ## Register as an MCP server
 
-```bash
-claude mcp add --transport stdio mini-creative-toolkit -- uv run --project /path/to/this/repo toolkit.py
-```
-
-`toolkit.py` is preserved as a compatibility launcher, so existing
-configurations need no change. The modern equivalents:
+From a checkout, point Claude Code at the console script with an **absolute**
+project path:
 
 ```bash
-mct serve
-python -m mini_creative_toolkit
+claude mcp add --transport stdio mini-creative-toolkit -- \
+  uv run --project /absolute/path/to/mini-creative-toolkit mini-creative-toolkit
 ```
+
+`claude mcp list` should then show `mini-creative-toolkit: ... - ✓ Connected`.
+Pass settings with `-e`, for example
+`claude mcp add -e MCT_ALLOWED_ROOTS=$HOME/media ...` (see
+[Configuration](#configuration)).
+
+Relative paths in tool calls resolve against the directory Claude Code was
+started in. Results land in `MCT_OUTPUT_DIR`: by default `output/` inside the
+checkout, or `output/` under that directory when the server runs via `uvx`.
+
+Older instructions said `uv run --project /path/to/repo toolkit.py`. uv
+resolves `toolkit.py` against the *current* directory, not the project, so that
+form only connects when Claude Code is started inside the repository;
+anywhere else `claude mcp list` reports "Failed to connect". Replace it with the
+command above, or give `toolkit.py` as an absolute path. Other ways to start
+the same server:
+
+```bash
+uv run mct serve
+uv run python -m mini_creative_toolkit
+uv run mini-creative-toolkit     # the console script server.json points uvx at
+```
+
+Once a release is on PyPI, the shortest form will be
+`claude mcp add --transport stdio mini-creative-toolkit -- uvx mini-creative-toolkit`.
 
 ---
 
 ## CLI
 
 The CLI calls the same functions the MCP server does — there is no second
-implementation of any rule.
+implementation of any rule. From a checkout, prefix each command with
+`uv run` (or activate `.venv`).
 
 ```bash
 mct inspect photo.jpg
@@ -320,7 +372,7 @@ limit your real workload legitimately exceeds.
 | `MCT_ALLOWED_ROOTS` | *(unset)* | Restrict file access to these directories |
 | `MCT_MAX_INPUT_MB` | 512 | Largest input file |
 | `MCT_MAX_OUTPUT_MB` | 1024 | Largest output file |
-| `MCT_MAX_IMAGE_PIXELS` | 80000000 | Decompression-bomb guard |
+| `MCT_MAX_IMAGE_PIXELS` | 80000000 | Largest image read (decompression-bomb guard) or produced (resize, upscale, contact sheet) |
 | `MCT_MAX_VIDEO_DURATION` | 3600 | Longest video, in seconds |
 | `MCT_MAX_VIDEO_WIDTH` / `_HEIGHT` | 7680 | Largest video dimensions |
 | `MCT_MAX_BATCH_ITEMS` | 200 | Largest batch |
@@ -369,9 +421,18 @@ that. What it *does* guarantee:
 - **Paths are resolved before they are checked.** `resolve()` collapses `..`
   and follows symlinks first, so neither traversal nor a planted symlink can
   escape a configured allowed root.
-- **Nothing overwrites your input.** Writes are staged to a temporary sibling
-  and renamed into place only on success, so a crashed ffmpeg leaves no
-  truncated file and no orphaned GIF palette.
+- **Nothing overwrites an existing file unless you say so.** Writes are staged
+  to a temporary sibling and committed only on success, so a crashed ffmpeg
+  leaves no truncated file and no orphaned GIF palette; without
+  `overwrite=true` the commit refuses a name that already exists, even one that
+  appeared mid-run. Your input is replaced only if you name it as `output_path`
+  *and* pass `overwrite=true`.
+- **Dependencies stay quiet too.** onnxruntime (under rembg) ships with
+  telemetry on; the package sets `ORT_DISABLE_TELEMETRY=1` before it can load,
+  so the `network: none` in a payload also covers what a dependency would
+  have sent.
+- **Sizes are bounded both ways.** `MCT_MAX_IMAGE_PIXELS` applies to images
+  read *and* to the image a resize, upscale or contact sheet would create.
 - **The hosted response is never trusted.** Status, content type, a streaming
   byte budget, and an actual decode — an HTML error page served with HTTP 200
   is refused rather than written out as a `.jpg`.

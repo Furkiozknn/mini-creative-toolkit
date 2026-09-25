@@ -2,8 +2,8 @@
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.Furkiozknn/mini-creative-toolkit",
   "title": "Mini Creative Toolkit",
-  "description": "23 local media tools - resize, convert, strip metadata, remove background, upscale, trim and caption video - behind one MCP server. 22 of them report network: none in their own payload.",
-  "version": "2.0.0",
+  "description": "23 CPU-first image, video and audio tools in one MCP server; 20 never touch the network.",
+  "version": "2.1.0",
   "repository": {
     "url": "https://github.com/Furkiozknn/mini-creative-toolkit",
     "source": "github"
@@ -12,7 +12,7 @@
     {
       "registryType": "pypi",
       "identifier": "mini-creative-toolkit",
-      "version": "2.0.0",
+      "version": "2.1.0",
       "runtimeHint": "uvx",
       "transport": {
         "type": "stdio"

@@ -229,3 +229,53 @@ def test_cleanup_removes_partials_from_a_crashed_earlier_run(tmp_path):
 
 def test_normalize_expands_user_but_still_returns_an_absolute_path():
     assert normalize("~").is_absolute()
+
+
+def test_the_staging_file_name_carries_no_ffmpeg_pattern_syntax(tmp_path):
+    """ffmpeg's image muxer expands ``%d`` in an output name. The staging file
+    is what ffmpeg writes to, so a ``%`` in a caller's output_path used to make
+    ffmpeg write ``a1.part-*.png`` beside it - an orphan the toolkit never
+    cleaned up - and report "wrote no output". The final name is kept verbatim."""
+    manager = OutputManager(Config(output_dir=tmp_path / "out"))
+    target = manager.resolve_explicit(str(tmp_path / "frame%03d.png"), overwrite=False)
+    with manager.stage("thumb", "png", target) as staged:
+        assert "%" not in staged.tmp.name
+        staged.tmp.write_bytes(b"png bytes")
+    assert staged.path == target
+    assert target.read_bytes() == b"png bytes"
+    assert sorted(p.name for p in tmp_path.iterdir()) == ["frame%03d.png"]
+
+
+def test_overwrite_false_holds_even_if_the_file_appears_during_the_write(tmp_path):
+    """resolve_explicit checks "does not exist" before the work starts; the
+    commit used os.replace, which silently clobbers. A file that appeared in
+    between - another tool call, another program - was overwritten although
+    the caller never passed overwrite=true."""
+    manager = OutputManager(Config(output_dir=tmp_path / "out"))
+    target = tmp_path / "result.png"
+    destination = manager.resolve_explicit(str(target), overwrite=False)
+    with pytest.raises(InvalidInputError, match="overwrite"):
+        with manager.stage("thing", "png", destination) as staged:
+            staged.tmp.write_bytes(b"ours")
+            target.write_bytes(b"someone else's")
+    assert target.read_bytes() == b"someone else's"
+    assert [p.name for p in tmp_path.iterdir() if ".part-" in p.name] == []
+
+
+def test_overwrite_true_still_replaces_an_existing_file(tmp_path):
+    manager = OutputManager(Config(output_dir=tmp_path / "out"))
+    target = tmp_path / "result.png"
+    target.write_bytes(b"old")
+    destination = manager.resolve_explicit(str(target), overwrite=True)
+    with manager.stage("thing", "png", destination) as staged:
+        staged.tmp.write_bytes(b"new")
+    assert staged.path == target.resolve()
+    assert target.read_bytes() == b"new"
+
+
+def test_a_generated_name_is_committed_without_replacing_anything(tmp_path):
+    manager = OutputManager(Config(output_dir=tmp_path / "out"))
+    with manager.stage("thing", "png") as staged:
+        staged.tmp.write_bytes(b"data")
+    assert staged.path.read_bytes() == b"data"
+    assert [p.name for p in (tmp_path / "out").iterdir()] == [staged.path.name]

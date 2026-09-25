@@ -183,7 +183,19 @@ CAPABILITIES: dict[str, ToolCapability] = {
         ),
         _cap("create_contact_sheet", "Tile several images into one review sheet."),
         _cap("compare_images", "Compare two images: size, bytes, and a difference score.", writes_files=False),
-        _cap("batch_process", "Apply one operation to many files with bounded concurrency.", potentially_slow=True),
+        _cap(
+            "batch_process",
+            "Apply one operation to many files with bounded concurrency.",
+            # As networked as the most networked operation it can run. Its
+            # payload reports the need of the operation that actually ran.
+            network=NetworkNeed.FIRST_RUN_ONLY,
+            potentially_slow=True,
+            notes=(
+                "Only operation=remove_background can touch the network (a model's "
+                "first use downloads its weights); every other operation reports "
+                "network: none.",
+            ),
+        ),
         _cap("list_capabilities", "Describe every tool's requirements and this machine's readiness.", reads_files=False, writes_files=False),
         _cap("list_background_models", "List rembg models with their characteristics and licence status.", reads_files=False, writes_files=False),
         _cap("list_presets", "List the built-in social image/video dimension presets.", reads_files=False, writes_files=False),

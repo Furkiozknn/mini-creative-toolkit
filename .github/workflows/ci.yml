@@ -15,6 +15,7 @@ concurrency:
 jobs:
   test:
     runs-on: ubuntu-latest
+    timeout-minutes: 10  # olculen en uzun kosu 105 sn
     strategy:
       fail-fast: false
       matrix:
@@ -29,7 +30,7 @@ jobs:
       - uses: actions/checkout@v7
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v7
+        uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78  # v7.6.0
 
       # ffmpeg/ffprobe are NOT preinstalled on the ubuntu-latest runner image
       # (confirmed via a real CI failure, exit 127) - install explicitly.
@@ -60,13 +61,14 @@ jobs:
   # ffmpeg at all, which is a supported configuration.
   without-ffmpeg:
     runs-on: ubuntu-latest
+    timeout-minutes: 10  # olculen en uzun kosu 14 sn
     env:
       UV_PYTHON: "3.11"
     steps:
       - uses: actions/checkout@v7
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v7
+        uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78  # v7.6.0
 
       - name: Confirm ffmpeg really is absent
         run: |
@@ -95,13 +97,14 @@ jobs:
 
   surfaces:
     runs-on: ubuntu-latest
+    timeout-minutes: 10  # olculen en uzun kosu 52 sn
     env:
       UV_PYTHON: "3.11"
     steps:
       - uses: actions/checkout@v7
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v7
+        uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78  # v7.6.0
 
       - name: Install ffmpeg
         run: sudo apt-get update && sudo apt-get install -y ffmpeg
@@ -116,6 +119,46 @@ jobs:
         run: |
           echo "" | timeout 60 uv run python -m mini_creative_toolkit
           echo "" | timeout 60 uv run toolkit.py
+
+      # What README "Register as an MCP server" tells people to run, started
+      # from outside the checkout the way Claude Code starts it. The older
+      # `uv run --project <repo> toolkit.py` passed the step above (run from
+      # the repo root) and failed everywhere else: uv resolves toolkit.py
+      # against the current directory.
+      - name: The documented registration command works from another directory
+        working-directory: ${{ runner.temp }}
+        run: |
+          # A real client keeps stdin open until it has its answers. Piping the
+          # requests with printf closed stdin at once, and the server may shut
+          # down before answering tools/list - which is what an earlier version
+          # of this step raced on. Each reply is read before the next request.
+          MCT_LOG_LEVEL=quiet timeout 120 python3 - <<'PY'
+          import json, os, subprocess
+          proc = subprocess.Popen(
+              ["uv", "run", "--project", os.environ["GITHUB_WORKSPACE"], "mini-creative-toolkit"],
+              stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True,
+          )
+          def send(message):
+              proc.stdin.write(json.dumps(message) + "\n")
+              proc.stdin.flush()
+          def reply(request_id):
+              for line in proc.stdout:
+                  message = json.loads(line)
+                  if message.get("id") == request_id:
+                      return message
+              raise SystemExit(f"server closed stdout before answering request {request_id}")
+          send({"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {
+              "protocolVersion": "2025-06-18", "capabilities": {},
+              "clientInfo": {"name": "ci", "version": "0"}}})
+          info = reply(1)["result"]["serverInfo"]
+          send({"jsonrpc": "2.0", "method": "notifications/initialized"})
+          send({"jsonrpc": "2.0", "id": 2, "method": "tools/list"})
+          tools = reply(2)["result"]["tools"]
+          proc.stdin.close()
+          proc.wait(timeout=30)
+          assert len(tools) == 23, len(tools)
+          print("initialize:", info, "| tools/list:", len(tools))
+          PY
 
       - name: The CLI works end to end
         run: |
@@ -157,11 +200,12 @@ jobs:
   # hicbir sey paketlemeyi denemiyordu. Bu is onu her push'a tasiyor.
   paket:
     runs-on: ubuntu-latest
+    timeout-minutes: 10  # olculen en uzun kosu 15 sn
     steps:
       - uses: actions/checkout@v4
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v7
+        uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78  # v7.6.0
 
       - name: Paket derleniyor mu
         run: uv build
@@ -178,6 +222,9 @@ jobs:
           uv venv /tmp/deneme
           VIRTUAL_ENV=/tmp/deneme uv pip install dist/*.whl
           test -x /tmp/deneme/bin/mct || { echo "konsol komutu uretilmedi: mct"; exit 1; }
+          # server.json istemcilere `uvx mini-creative-toolkit` diyor; uvx paket
+          # adiyla ayni isimli komutu ariyor.
+          test -x /tmp/deneme/bin/mini-creative-toolkit || { echo "konsol komutu uretilmedi: mini-creative-toolkit"; exit 1; }
           # Sunucu stdio'da sonsuza kadar bloke oldugu icin CALISTIRILMIYOR;
           # hedefin var ve cagrilabilir oldugu dogrulaniyor.
           VIRTUAL_ENV=/tmp/deneme /tmp/deneme/bin/python -c "import mini_creative_toolkit.cli as m; assert callable(m.main), 'main cagrilabilir degil'"
@@ -192,9 +239,10 @@ jobs:
   denetim:
     name: mcp-vet (kendi sunucumuza kendi aracimiz)
     runs-on: ubuntu-latest
+    timeout-minutes: 10  # olculen en uzun kosu 10 sn
     steps:
       - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v7
+      - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78  # v7.6.0
 
       # Ayni hesaptaki mcp-vet: bir MCP sunucusunun ne yapabildigini
       # kaynaktan cikariyor -- hangi kimlik bilgilerine dokunuyor, nereye
