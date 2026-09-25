@@ -48,6 +48,8 @@ dependencies = [
 
 [project.urls]
 Homepage = "https://github.com/Furkiozknn/mini-creative-toolkit"
+Documentation = "https://github.com/Furkiozknn/mini-creative-toolkit#readme"
+Changelog = "https://github.com/Furkiozknn/mini-creative-toolkit/blob/master/CHANGELOG.md"
 Issues = "https://github.com/Furkiozknn/mini-creative-toolkit/issues"
 
 [project.scripts]

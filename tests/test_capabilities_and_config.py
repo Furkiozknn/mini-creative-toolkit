@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import pathlib
+
 import pytest
 
 from mini_creative_toolkit.capabilities import (
@@ -11,7 +13,8 @@ from mini_creative_toolkit.capabilities import (
     probe_environment,
     readiness,
 )
-from mini_creative_toolkit.config import Config
+from mini_creative_toolkit import config as config_mod
+from mini_creative_toolkit.config import Config, default_output_dir
 from mini_creative_toolkit.errors import InvalidInputError
 from mini_creative_toolkit.tools.background import list_background_models
 from mini_creative_toolkit.tools.inspect import list_capabilities
@@ -137,6 +140,42 @@ def test_a_malformed_preset_override_is_rejected(monkeypatch):
 
 def test_config_defaults_need_no_environment():
     assert Config.from_env({}).max_input_mb > 0
+
+
+def test_the_default_output_dir_is_the_repo_output_dir_in_a_checkout():
+    """Running from a source checkout keeps the historical ``output/`` path."""
+    repo_root = pathlib.Path(__file__).resolve().parents[1]
+    assert default_output_dir() == repo_root / "output"
+    assert Config.from_env({}).output_dir == repo_root / "output"
+
+
+def test_the_default_output_dir_falls_back_to_cwd_outside_a_checkout(tmp_path, monkeypatch):
+    """Installed non-editably, the module sits in site-packages.
+
+    ``parents[2]`` then names something inside the interpreter's own tree, and
+    writing outputs there would be wrong (and often not even permitted). Every
+    caller must land on ``./output`` instead. This stages the installed layout
+    the same way an installer would - a package directory with no repository
+    around it - and asserts the fallback rather than the accidental path.
+    """
+    fake_site = tmp_path / "site-packages"
+    package = fake_site / "mini_creative_toolkit"
+    package.mkdir(parents=True)
+    monkeypatch.setattr(config_mod, "__file__", str(package / "config.py"))
+
+    work = tmp_path / "work"
+    work.mkdir()
+    monkeypatch.chdir(work)
+
+    # parents[2] of the staged module is tmp_path, which is not a checkout.
+    assert fake_site.parent == tmp_path
+    assert default_output_dir() == work / "output"
+    assert Config.from_env({}).output_dir == work / "output"
+
+
+def test_an_explicit_output_dir_still_wins(tmp_path):
+    cfg = Config.from_env({"MCT_OUTPUT_DIR": str(tmp_path / "elsewhere")})
+    assert cfg.output_dir == tmp_path / "elsewhere"
 
 
 def test_config_reads_every_documented_variable():

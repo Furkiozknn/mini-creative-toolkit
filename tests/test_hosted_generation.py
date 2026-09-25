@@ -151,13 +151,50 @@ def test_an_oversized_response_is_aborted_and_nothing_is_written(config):
     assert list(config.output_dir.glob("generated-*")) == []
 
 
-def test_a_redirect_is_followed(config):
+def test_a_redirect_within_the_service_is_followed(config):
     def handler(request):
         if request.url.path.startswith("/prompt/"):
-            return httpx.Response(302, headers={"location": "https://cdn.example/img.png"})
+            return httpx.Response(
+                302, headers={"location": "https://image.pollinations.ai/img.png"}
+            )
         return httpx.Response(200, content=_png_bytes(), headers={"content-type": "image/png"})
 
     assert generate_image_free("x", 64, 64, client=_client(handler))["format"] == "PNG"
+
+
+@pytest.mark.parametrize("location", [
+    "https://cdn.example/img.png",             # some other origin entirely
+    "https://image.pollinations.ai.evil/x",    # suffix trick
+    "http://image.pollinations.ai/img.png",    # downgraded to plaintext
+    "//evil.example/img.png",                  # scheme-relative
+])
+def test_a_redirect_off_the_service_is_refused_before_it_is_requested(config, location):
+    """A 3xx must not be able to re-point this request at an origin we never chose.
+
+    The prompt travels in the URL, so following the redirect is what would
+    disclose it. The second request must therefore never be made.
+    """
+    seen = []
+
+    def handler(request):
+        seen.append(request.url)
+        if request.url.path.startswith("/prompt/"):
+            return httpx.Response(302, headers={"location": location})
+        return httpx.Response(200, content=_png_bytes(), headers={"content-type": "image/png"})
+
+    with pytest.raises(NetworkError, match="not.*one of its own hosts"):
+        generate_image_free("x", 64, 64, client=_client(handler))
+    assert len(seen) == 1
+
+
+def test_a_redirect_loop_is_bounded(config):
+    def handler(request):
+        return httpx.Response(
+            302, headers={"location": "https://image.pollinations.ai/round-again"}
+        )
+
+    with pytest.raises(NetworkError, match="redirected more than"):
+        generate_image_free("x", 64, 64, client=_client(handler))
 
 
 def test_the_prompt_is_url_encoded_not_interpolated():
