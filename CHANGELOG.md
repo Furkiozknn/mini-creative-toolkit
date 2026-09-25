@@ -38,6 +38,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- onnxruntime's telemetry is switched off. Its official Linux wheel (1.29.0
+  here) connects to `mobile.events.data.microsoft.com` as soon as it is
+  imported, and rembg imports it - so `list_background_models`, and any tool
+  called later in the same server process, made a connection while reporting
+  `network: none` (seen under `strace`). The package now sets
+  `ORT_DISABLE_TELEMETRY=1` on import unless the variable is already set; with
+  it, `strace` over a call to every local tool shows no `AF_INET` connection.
+
 - `MCT_ALLOWED_ROOTS` could be sidestepped with a playlist: an HLS `.m3u8`
   inside an allowed root makes ffmpeg open the segments it lists, wherever they
   are. Inputs that ffprobe identifies as a playlist or manifest (`hls`, `dash`,
