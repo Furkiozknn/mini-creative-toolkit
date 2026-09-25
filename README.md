@@ -138,7 +138,7 @@ extension claims — and decide from there.
 
 ## Capability matrix
 
-<img src="assets/tools-grid.svg" alt="All 23 MCP tools grouped by what they use: image, background, upscale, video and audio, inspect and compose, and orchestration - 22 of them never leave this machine, with generate_image_free the one hosted exception" width="100%">
+<img src="assets/tools-grid.svg" alt="All 23 MCP tools grouped by what they use: image, background, upscale, video and audio, inspect and compose, and orchestration - 22 of them run on this machine, with generate_image_free the one hosted exception" width="100%">
 
 Generated from the same table the MCP tool descriptions use — run
 `mct capabilities` for the live version, including what this machine is
