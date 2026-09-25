@@ -20,7 +20,7 @@ CPU-first. No paid APIs. External network access is isolated to one tool and exp
   <img src="assets/tool-call.svg" alt="One MCP tool call to inspect_media and its response, which reports execution local and network none" width="680">
 </p>
 
-<p align="center"><sub><i>A real call and a real response. <code>"network": "none"</code> is not a claim in this README — the server puts it in the payload, on 21 of its 23 tools. <code>remove_background</code> says <code>"first-run-only"</code> (rembg downloads its weights once); <code>generate_image_free</code> says <code>"required"</code>.</i></sub></p>
+<p align="center"><sub><i>A real call and a real response. <code>"network": "none"</code> is not a claim in this README — the server puts it in the payload, on 20 of its 23 tools. <code>remove_background</code> says <code>"first-run-only"</code> (rembg downloads its weights once), and so does <code>batch_process</code> when that is the operation it runs; <code>generate_image_free</code> says <code>"required"</code>.</i></sub></p>
 
 ---
 
@@ -164,14 +164,16 @@ actually missing.
 | `extract_audio` | yes | no | no | `ffmpeg` | yes |
 | `inspect_media` | yes | no | no | `ffprobe` (AV only) | yes |
 | `optimize_media` | yes | no | no | `ffmpeg` (video only) | yes |
-| `batch_process` | yes | no | no | per operation | yes |
+| `batch_process` | yes | first run only (`remove_background` only) | no | per operation | yes |
 | `list_capabilities` | yes | no | no | no | yes |
 | `list_background_models` | yes | no | no | no | yes |
 | `list_presets` | yes | no | no | no | yes |
 | `generate_image_free` | **no** | **required** | no | no | **no** |
 
 "first run only" is not a hedge: rembg downloads a model's ONNX weights the
-first time that model is used, then never again. "per model" means
+first time that model is used, then never again. `batch_process` inherits that
+only when its operation is `remove_background`; its payload reports the
+network need of the operation it actually ran. "per model" means
 `remove_background` is reproducible for a given model but different models
 give different cut-outs.
 

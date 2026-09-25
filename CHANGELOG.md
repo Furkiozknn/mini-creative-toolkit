@@ -39,6 +39,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   reports `first-run-only`, because rembg downloads its weights on first use.
   `server.json`, the README, the project metadata and two diagrams now say 21,
   and a test ties that number to the capability table.
+- `batch_process` still printed `"network": "none"` when its operation was
+  `remove_background`, which downloads rembg weights on first use (seen with a
+  clean `U2NET_HOME`: the batch fetched `u2netp.onnx` from GitHub and reported
+  `none`). The payload now reports the network need of the operation that ran,
+  and the capability table marks `batch_process` `first-run-only`, so the
+  published count is 20, not 21. A test now checks every README matrix row's
+  Network cell against the table, not just that the tool is mentioned.
 - The default output directory no longer assumes a source checkout. Installed
   non-editably, `output/` is resolved under the current working directory
   instead of inside the interpreter's own tree.

@@ -156,6 +156,28 @@ def test_the_readme_capability_matrix_matches_the_declared_capabilities():
         assert f"`{name}`" in readme, f"{name} is not mentioned in README.md"
 
 
+def test_the_readme_matrix_network_column_matches_each_tool():
+    """Mentioning every tool was not enough: batch_process sat in the matrix
+    with Network "no" while it could download rembg weights. Each row's
+    Network cell is now checked against that tool's declared need."""
+    from mini_creative_toolkit.capabilities import CAPABILITIES, NetworkNeed
+
+    rows = {}
+    for line in _read(REPO_ROOT / "README.md").splitlines():
+        match = re.match(r"\| `(\w+)` \| [^|]+ \| ([^|]+) \|", line)
+        if match and match.group(1) in CAPABILITIES:
+            rows[match.group(1)] = match.group(2).strip().strip("*")
+    assert set(rows) == set(CAPABILITIES)
+    expected = {
+        NetworkNeed.NONE: "no",
+        NetworkNeed.FIRST_RUN_ONLY: "first run only",
+        NetworkNeed.REQUIRED: "required",
+    }
+    for name, cell in rows.items():
+        assert cell.startswith(expected[CAPABILITIES[name].network]), (name, cell)
+
+
+
 def test_the_readme_discloses_the_hosted_tool_rather_than_claiming_to_be_offline():
     """Asserted positively on purpose. A blacklist of overclaim phrases matches
     the README's own *denial* of them ("there is no global 'CPU-only, no
@@ -241,7 +263,8 @@ def test_the_published_network_count_matches_the_capability_table():
     offline = sum(1 for c in CAPABILITIES.values() if c.network is NetworkNeed.NONE)
     total = len(CAPABILITIES)
     description = json.loads(_read(REPO_ROOT / "server.json"))["description"]
-    assert f"{offline} of them report network: none" in description, description
+    assert f"{offline} never touch the network" in description, description
+    assert f"{total} " in description, description
     readme = _read(REPO_ROOT / "README.md")
     assert f"on {offline} of its {total} tools" in readme
     summary = json.loads(_read(REPO_ROOT / "project-meta.json"))["summary"]

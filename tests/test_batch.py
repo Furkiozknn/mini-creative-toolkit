@@ -123,3 +123,38 @@ def test_a_batch_leaves_no_partial_files_behind(config, many_images, tmp_path):
     broken.write_bytes(b"nope")
     batch_process(many_images + [str(broken)], "optimize", {"goal": "web"})
     assert list(config.output_dir.glob("*.part-*")) == []
+
+
+def test_a_background_removal_batch_does_not_claim_network_none(config, many_images, monkeypatch):
+    """batch_process used to print "network": "none" in its own payload for
+    every operation - including remove_background, whose first run downloads
+    the model weights from GitHub. Observed with a clean U2NET_HOME: the batch
+    fetched u2netp.onnx and still reported none. The payload is the place this
+    project says the claim is checked, so it has to be right there."""
+    from mini_creative_toolkit.engines import background as engine
+
+    monkeypatch.setattr(engine, "remove_background", lambda data, model="u2net": data)
+    result = batch_process(many_images[:1], "remove_background", {}, config=config)
+    assert result["succeeded"] == 1
+    assert result["network"] == "first-run-only"
+    assert result["results"][0]["network"] == "first-run-only"
+
+
+def test_a_batch_reports_the_network_need_of_the_operation_it_ran(config, many_images):
+    from mini_creative_toolkit.capabilities import CAPABILITIES
+    from mini_creative_toolkit.tools.batch import OPERATION_TOOLS, OPERATIONS
+
+    assert set(OPERATION_TOOLS) == set(OPERATIONS)
+    result = batch_process(many_images[:1], "resize", {"width": 10, "height": 10}, config=config)
+    assert result["network"] == CAPABILITIES["resize_image"].network.value == "none"
+
+
+def test_the_batch_capability_is_as_networked_as_its_most_networked_operation():
+    """list_capabilities and the MCP description footer read the table, so the
+    table entry for batch_process must not be more offline than what it runs."""
+    from mini_creative_toolkit.capabilities import CAPABILITIES, NetworkNeed
+    from mini_creative_toolkit.tools.batch import OPERATION_TOOLS
+
+    order = [NetworkNeed.NONE, NetworkNeed.FIRST_RUN_ONLY, NetworkNeed.REQUIRED]
+    worst = max((CAPABILITIES[t].network for t in OPERATION_TOOLS.values()), key=order.index)
+    assert CAPABILITIES["batch_process"].network is worst

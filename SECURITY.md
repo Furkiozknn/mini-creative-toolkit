@@ -180,7 +180,9 @@ in the toolkit is affected.
 - **FSRCNN weights ship inside the package.** Nothing is downloaded.
 - **rembg downloads ONNX weights on first use** of a model it has not cached.
   This is disclosed in the tool description and in `list_capabilities`, where
-  `remove_background` is marked `network: first-run-only`.
+  `remove_background` is marked `network: first-run-only` - as is
+  `batch_process`, whose payload reports `first-run-only` when its operation
+  is `remove_background` and `none` otherwise.
 - **Upscayl is never downloaded.** Both its binary and its models must already
   exist on your machine and be pointed at by `UPSCAYL_BIN_PATH` and
   `UPSCAYL_MODELS_PATH`. The toolkit will not fetch or install them.
