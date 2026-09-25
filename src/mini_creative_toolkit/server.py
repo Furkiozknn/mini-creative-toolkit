@@ -187,9 +187,17 @@ def inspect_media(path: MediaPath) -> dict:
 )
 def resize_image(
     image_path: ImagePath,
-    width: int,
-    height: int,
-    keep_aspect: bool = True,
+    width: Annotated[int, Field(description="Target width in pixels, 1 to 100000.")],
+    height: Annotated[int, Field(description="Target height in pixels, 1 to 100000.")],
+    keep_aspect: Annotated[
+        bool,
+        Field(
+            description=(
+                "Fit inside width x height keeping the aspect ratio. Default true; false "
+                "stretches to exactly width x height."
+            )
+        ),
+    ] = True,
     output_path: OutputPath = None,
     overwrite: Overwrite = False,
 ) -> dict | str:
@@ -206,10 +214,37 @@ def resize_image(
 )
 def convert_format(
     image_path: ImagePath,
-    target_format: str,
-    quality: int | None = None,
-    lossless: bool = False,
-    background: str = "white",
+    target_format: Annotated[
+        str,
+        Field(description="Format to write: png, jpeg (or jpg), webp, or avif. Case does not matter."),
+    ],
+    quality: Annotated[
+        int | None,
+        Field(
+            description=(
+                "Encoder quality for jpeg, webp and avif, 1 to 100. Ignored for png. "
+                "Omit it for the encoder default (90 for jpeg)."
+            )
+        ),
+    ] = None,
+    lossless: Annotated[
+        bool,
+        Field(
+            description=(
+                "Encode webp or avif losslessly; quality is then ignored. Has no effect "
+                "on other formats. Default false."
+            )
+        ),
+    ] = False,
+    background: Annotated[
+        str,
+        Field(
+            description=(
+                "Colour that transparency is flattened onto when converting to jpeg: "
+                "white, black, grey (or gray), or #rrggbb. Default white."
+            )
+        ),
+    ] = "white",
     output_path: OutputPath = None,
     overwrite: Overwrite = False,
 ) -> dict | str:
@@ -240,10 +275,27 @@ def strip_metadata(
 )
 def add_watermark(
     image_path: ImagePath,
-    text: str,
-    position: str = "bottom-right",
-    opacity: float = 0.5,
-    font_size: int = 24,
+    text: Annotated[
+        str,
+        Field(description="Watermark text, drawn in white. 1 to 200 characters, no control characters."),
+    ],
+    position: Annotated[
+        str,
+        Field(
+            description=(
+                "Where to place the text: top-left, top-right, bottom-left, bottom-right "
+                "or center. Default bottom-right."
+            )
+        ),
+    ] = "bottom-right",
+    opacity: Annotated[
+        float,
+        Field(description="Text opacity from 0 (invisible) to 1 (solid). Default 0.5."),
+    ] = 0.5,
+    font_size: Annotated[
+        int,
+        Field(description="Font size in pixels, 1 to 2000. Default 24."),
+    ] = 24,
     output_path: OutputPath = None,
     overwrite: Overwrite = False,
 ) -> dict | str:
@@ -262,7 +314,15 @@ def add_watermark(
 )
 def remove_background(
     image_path: ImagePath,
-    model: str = "u2net",
+    model: Annotated[
+        str,
+        Field(
+            description=(
+                "rembg model name, for example u2net (default) or birefnet-general. "
+                "list_background_models shows the choices; an unknown name is refused."
+            )
+        ),
+    ] = "u2net",
     output_path: OutputPath = None,
     overwrite: Overwrite = False,
 ) -> dict | str:
@@ -276,12 +336,40 @@ def remove_background(
     "be read are skipped and listed rather than aborting the sheet.",
 )
 def create_contact_sheet(
-    image_paths: list[str],
-    thumbnail_size: int = 240,
-    columns: int = 4,
-    padding: int = 12,
-    labels: bool = True,
-    background: str = "white",
+    image_paths: Annotated[
+        list[str],
+        Field(
+            description=(
+                "Local image files to tile, in order. At least one, at most "
+                "MCT_MAX_BATCH_ITEMS (default 200). Same path rules as image_path."
+            )
+        ),
+    ],
+    thumbnail_size: Annotated[
+        int,
+        Field(description="Longest side of each thumbnail in pixels, 1 to 2000. Default 240."),
+    ] = 240,
+    columns: Annotated[
+        int,
+        Field(description="Number of thumbnails per row, 1 to 20. Default 4."),
+    ] = 4,
+    padding: Annotated[
+        int,
+        Field(description="Space between and around thumbnails in pixels, 0 to 200. Default 12."),
+    ] = 12,
+    labels: Annotated[
+        bool,
+        Field(description="Print each file name under its thumbnail. Default true."),
+    ] = True,
+    background: Annotated[
+        str,
+        Field(
+            description=(
+                "Sheet background colour: white, black, grey (or gray), or #rrggbb. "
+                "Default white."
+            )
+        ),
+    ] = "white",
     output_path: OutputPath = None,
     overwrite: Overwrite = False,
 ) -> dict | str:
@@ -315,7 +403,13 @@ def compare_images(
     "default on machines without one.",
 )
 def upscale_image_fast(
-    image_path: ImagePath, scale: int = 4, output_path: OutputPath = None, overwrite: Overwrite = False
+    image_path: ImagePath,
+    scale: Annotated[
+        int,
+        Field(description="Enlargement factor: 2, 3 or 4 (one FSRCNN model per factor). Default 4."),
+    ] = 4,
+    output_path: OutputPath = None,
+    overwrite: Overwrite = False,
 ) -> dict | str:
     return upscale_tools.upscale_image_fast(image_path, scale, output_path, overwrite)
 
@@ -331,8 +425,19 @@ def upscale_image_fast(
 )
 def upscale_image(
     image_path: ImagePath,
-    scale: int = 4,
-    model: str = "upscayl-standard-4x",
+    scale: Annotated[
+        int,
+        Field(description="Enlargement factor: 2, 3 or 4. Default 4."),
+    ] = 4,
+    model: Annotated[
+        str,
+        Field(
+            description=(
+                "Upscayl model name, as found in UPSCAYL_MODELS_PATH. Letters, digits, "
+                "'-' and '_' only. Default upscayl-standard-4x."
+            )
+        ),
+    ] = "upscayl-standard-4x",
     output_path: OutputPath = None,
     overwrite: Overwrite = False,
 ) -> dict | str:
@@ -348,7 +453,18 @@ def upscale_image(
     "the result says so.",
 )
 def upscale_image_auto(
-    image_path: ImagePath, scale: int = 4, output_path: OutputPath = None, overwrite: Overwrite = False
+    image_path: ImagePath,
+    scale: Annotated[
+        int,
+        Field(
+            description=(
+                "Whole-number enlargement factor, 1 to 8. Default 4. The models only "
+                "cover 2x, 3x and 4x; without Upscayl and a GPU, other factors use Lanczos."
+            )
+        ),
+    ] = 4,
+    output_path: OutputPath = None,
+    overwrite: Overwrite = False,
 ) -> dict | str:
     return upscale_tools.upscale_image_auto(image_path, scale, output_path, overwrite)
 
@@ -379,10 +495,32 @@ def video_thumbnail(
 def video_to_gif(
     video_path: VideoPath,
     start: Timestamp = "00:00:00",
-    duration: float = 3.0,
-    fps: int = 12,
-    width: int = 480,
-    loop: int = 0,
+    duration: Annotated[
+        float,
+        Field(
+            description=(
+                "Length of the clip in seconds, above 0 and at most 30. "
+                "fps x duration must not exceed 900 frames. Default 3."
+            )
+        ),
+    ] = 3.0,
+    fps: Annotated[
+        int,
+        Field(description="Frames per second in the GIF, 1 to 50. Default 12."),
+    ] = 12,
+    width: Annotated[
+        int,
+        Field(
+            description=(
+                "GIF width in pixels, 1 to 1920; height follows the aspect "
+                "ratio. Default 480."
+            )
+        ),
+    ] = 480,
+    loop: Annotated[
+        int,
+        Field(description="0 loops forever (default), -1 plays once, a positive number repeats that many times."),
+    ] = 0,
     output_path: OutputPath = None,
     overwrite: Overwrite = False,
 ) -> dict | str:
@@ -401,7 +539,15 @@ def video_to_gif(
 def video_trim(
     video_path: VideoPath,
     start: Timestamp,
-    duration: float,
+    duration: Annotated[
+        float,
+        Field(
+            description=(
+                "Length of the clip in seconds, above 0 and at most MCT_MAX_VIDEO_DURATION "
+                "(default 3600)."
+            )
+        ),
+    ],
     output_path: OutputPath = None,
     overwrite: Overwrite = False,
 ) -> dict | str:
@@ -416,10 +562,42 @@ def video_trim(
 )
 def video_resize(
     video_path: VideoPath,
-    width: int,
-    height: int | None = None,
-    keep_aspect: bool = True,
-    crf: int = 23,
+    width: Annotated[
+        int,
+        Field(
+            description=(
+                "Target width in pixels, up to MCT_MAX_VIDEO_WIDTH (default 7680). An odd "
+                "value is rounded down to even."
+            )
+        ),
+    ],
+    height: Annotated[
+        int | None,
+        Field(
+            description=(
+                "Target height in pixels, used only when keep_aspect is false. Omit it to "
+                "derive the height from the aspect ratio."
+            )
+        ),
+    ] = None,
+    keep_aspect: Annotated[
+        bool,
+        Field(
+            description=(
+                "Derive the height from width and the source aspect ratio. Default true; "
+                "false with a height stretches to exactly width x height."
+            )
+        ),
+    ] = True,
+    crf: Annotated[
+        int,
+        Field(
+            description=(
+                "H.264 constant rate factor, 1 to 51. Lower means better quality and a "
+                "larger file. Default 23."
+            )
+        ),
+    ] = 23,
     output_path: OutputPath = None,
     overwrite: Overwrite = False,
 ) -> dict | str:
@@ -438,8 +616,24 @@ def video_resize(
 )
 def video_compress(
     video_path: VideoPath,
-    crf: int = 28,
-    preset: str = "medium",
+    crf: Annotated[
+        int,
+        Field(
+            description=(
+                "H.264 constant rate factor, 1 to 51. Lower means better quality and a "
+                "larger file. Default 28."
+            )
+        ),
+    ] = 28,
+    preset: Annotated[
+        str,
+        Field(
+            description=(
+                "x264 speed preset: ultrafast, superfast, veryfast, faster, fast, medium, "
+                "slow, slower or veryslow. Slower gives a smaller file. Default medium."
+            )
+        ),
+    ] = "medium",
     output_path: OutputPath = None,
     overwrite: Overwrite = False,
 ) -> dict | str:
@@ -453,7 +647,10 @@ def video_compress(
 )
 def extract_audio(
     video_path: VideoPath,
-    audio_format: str = "mp3",
+    audio_format: Annotated[
+        str,
+        Field(description="mp3 (variable bitrate) or wav (16-bit PCM). Default mp3."),
+    ] = "mp3",
     output_path: OutputPath = None,
     overwrite: Overwrite = False,
 ) -> dict | str:
@@ -473,10 +670,37 @@ def extract_audio(
 )
 def optimize_media(
     path: MediaPath,
-    goal: str = "web",
-    max_width: int | None = None,
-    max_height: int | None = None,
-    preset: str | None = None,
+    goal: Annotated[
+        str,
+        Field(description="What to optimise for: web, social, smallest, quality or archive. Default web."),
+    ] = "web",
+    max_width: Annotated[
+        int | None,
+        Field(
+            description=(
+                "Images only: fit the result within this width in pixels, keeping the "
+                "aspect ratio. 1 to 100000."
+            )
+        ),
+    ] = None,
+    max_height: Annotated[
+        int | None,
+        Field(
+            description=(
+                "Images only: fit the result within this height in pixels, keeping the "
+                "aspect ratio. 1 to 100000."
+            )
+        ),
+    ] = None,
+    preset: Annotated[
+        str | None,
+        Field(
+            description=(
+                "Images only: an image preset name from list_presets (square, portrait, "
+                "landscape, story, wide, thumbnail). Replaces max_width and max_height."
+            )
+        ),
+    ] = None,
     output_path: OutputPath = None,
     overwrite: Overwrite = False,
 ) -> dict | str:
@@ -495,10 +719,44 @@ def optimize_media(
     "its own generated output path, so nothing is overwritten.",
 )
 def batch_process(
-    paths: list[str],
-    operation: str,
-    options: dict | None = None,
-    concurrency: int | None = None,
+    paths: Annotated[
+        list[str],
+        Field(
+            description=(
+                "Local files to process. At least one, at most MCT_MAX_BATCH_ITEMS "
+                "(default 200). Same path rules as image_path."
+            )
+        ),
+    ],
+    operation: Annotated[
+        str,
+        Field(
+            description=(
+                "One of resize, convert_format, strip_metadata, watermark, "
+                "remove_background, optimize, upscale_fast."
+            )
+        ),
+    ],
+    options: Annotated[
+        dict | None,
+        Field(
+            description=(
+                "Keyword arguments for the operation, named as in the single-file tool. "
+                "resize needs width and height, convert_format needs target_format, "
+                "watermark needs text. output_path is not allowed."
+            )
+        ),
+    ] = None,
+    concurrency: Annotated[
+        int | None,
+        Field(
+            description=(
+                "Files processed at once. Omit for the cap: 4 (MCT_BATCH_CONCURRENCY), "
+                "or 2 for remove_background and upscale_fast (MCT_HEAVY_BATCH_CONCURRENCY). "
+                "A higher value is refused."
+            )
+        ),
+    ] = None,
 ) -> dict:
     return batch_tools.batch_process(paths, operation, options, concurrency)
 
@@ -516,10 +774,32 @@ def batch_process(
     "the first time a model is used.",
 )
 def generate_image_free(
-    prompt: str,
-    width: int = 1024,
-    height: int = 1024,
-    seed: int | None = None,
+    prompt: Annotated[
+        str,
+        Field(
+            description=(
+                "Text description of the image, 1 to 1000 characters, no control "
+                "characters. It is sent to Pollinations.ai."
+            )
+        ),
+    ],
+    width: Annotated[
+        int,
+        Field(description="Requested width in pixels, 1 to 4096. Default 1024."),
+    ] = 1024,
+    height: Annotated[
+        int,
+        Field(description="Requested height in pixels, 1 to 4096. Default 1024."),
+    ] = 1024,
+    seed: Annotated[
+        int | None,
+        Field(
+            description=(
+                "Seed for repeatable output, 1 to 2147483647. Omit it to let the service "
+                "choose."
+            )
+        ),
+    ] = None,
     output_path: OutputPath = None,
     overwrite: Overwrite = False,
 ) -> dict | str:

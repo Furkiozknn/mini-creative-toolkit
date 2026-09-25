@@ -38,6 +38,12 @@ every payload were re-measured under `strace`.
   input schema, and `initialize` reports the server's real version instead of
   an empty string.
 
+- Every other tool parameter now has a description in its input schema too:
+  46 of them had only a name and a type, so a model saw `crf` with no range,
+  `width` with no unit and `loop` with no hint that `-1` means play once. Each
+  now states its unit, range, default or allowed values, and a test fails if
+  any tool parameter is left undescribed.
+
 - `mct capabilities` without `--json` prints one row per tool (ready, network,
   GPU, what it needs) and the reasons anything is blocked, instead of one
   ~450-character JSON blob per tool.

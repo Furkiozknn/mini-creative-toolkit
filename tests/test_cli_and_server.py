@@ -99,6 +99,20 @@ def test_shared_parameters_are_described_in_the_schema():
     assert "HH:MM:SS" in trim.input_schema["properties"]["start"]["description"]
 
 
+def test_every_tool_parameter_is_described_in_the_schema():
+    """A parameter without a description reaches the model as a bare name and
+    type. An audit found 46 of them - width with no unit, crf with no range,
+    loop with no hint that -1 means "play once" - and each one invites a wrong
+    call. Shared aliases cover the common parameters; this covers the rest."""
+    missing = [
+        f"{tool.name}.{name}"
+        for tool in _tools()
+        for name, prop in tool.input_schema.get("properties", {}).items()
+        if not str(prop.get("description") or "").strip()
+    ]
+    assert not missing, f"parameters without a description: {missing}"
+
+
 def test_the_capability_footer_is_generated_not_written_by_hand():
     text = describe("resize_image", "Body.")
     assert text.startswith("Body.")
