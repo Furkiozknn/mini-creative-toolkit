@@ -159,6 +159,10 @@ class OutputManager:
 
     def __init__(self, config: Config | None = None) -> None:
         self.config = config or get_config()
+        #: Destinations the caller explicitly allowed to be replaced. Every
+        #: other commit refuses to clobber, even a file that appeared after
+        #: resolve_explicit checked.
+        self._replaceable: set[Path] = set()
 
     @property
     def directory(self) -> Path:
@@ -208,6 +212,8 @@ class OutputManager:
             raise InvalidInputError(f"Directory does not exist: {parent}")
         if not os.access(parent, os.W_OK):
             raise PathPermissionError(f"Directory is not writable: {parent}")
+        if overwrite:
+            self._replaceable.add(path)
         return path
 
     def stage(self, prefix: str, ext: str, destination: Path | None = None) -> "_Staged":
@@ -290,15 +296,48 @@ class _Staged:
                 f"Operation reported success but wrote no output for {self._final.name}"
             )
         self._manager.enforce_output_size(self.tmp)
-        try:
-            os.replace(self.tmp, self._final)
-        except OSError:
-            # Cross-device rename (output dir on another filesystem than the
-            # temp sibling cannot happen here, but a network mount can still
-            # refuse). Fall back to copy+unlink rather than losing the result.
-            shutil.move(str(self.tmp), str(self._final))
+        if self._final in self._manager._replaceable:
+            try:
+                os.replace(self.tmp, self._final)
+            except OSError:
+                # Cross-device rename (output dir on another filesystem than the
+                # temp sibling cannot happen here, but a network mount can still
+                # refuse). Fall back to copy+unlink rather than losing the result.
+                shutil.move(str(self.tmp), str(self._final))
+        else:
+            self._commit_without_replacing()
         self.path = self._final
         return False
+
+    def _commit_without_replacing(self) -> None:
+        """Move ``tmp`` into place only if nothing is there yet.
+
+        ``os.replace`` would silently clobber a file that appeared after
+        ``resolve_explicit`` checked. ``os.link`` fails atomically with
+        ``FileExistsError`` instead - including for a dangling symlink planted
+        at the destination.
+        """
+        assert self.tmp is not None
+        try:
+            os.link(self.tmp, self._final)
+        except FileExistsError:
+            self.tmp.unlink(missing_ok=True)
+            raise InvalidInputError(
+                f"{self._final} appeared while this operation was writing it and was "
+                f"left untouched. Pass overwrite=true to replace it, or choose another path."
+            ) from None
+        except OSError:
+            # A filesystem without hard links (some FUSE and FAT mounts). The
+            # check-then-rename window is back, but only there.
+            if os.path.lexists(self._final):
+                self.tmp.unlink(missing_ok=True)
+                raise InvalidInputError(
+                    f"{self._final} already exists. Pass overwrite=true to replace it, "
+                    f"or choose another path."
+                ) from None
+            shutil.move(str(self.tmp), str(self._final))
+            return
+        self.tmp.unlink(missing_ok=True)
 
 
 @contextlib.contextmanager

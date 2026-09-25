@@ -50,6 +50,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `description` is over the MCP Registry schema's 100-character limit, and it
   advertised "caption video", which no tool does. It is now 88 characters, and
   a test checks the limit, the `mcp-name` marker and the version match.
+- `overwrite=false` is now enforced at the moment the result is committed,
+  not only when the call starts: a file that appeared at `output_path` during
+  a long ffmpeg run used to be silently replaced by `os.replace`. The commit is
+  now an atomic `os.link`, which refuses an existing name.
+- `generate_image_free` validates `output_path` before the prompt is sent, and
+  `remove_background` before the model loads, so an unusable destination fails
+  first instead of after a third-party request or a model download.
 - The default output directory no longer assumes a source checkout. Installed
   non-editably, `output/` is resolved under the current working directory
   instead of inside the interpreter's own tree.

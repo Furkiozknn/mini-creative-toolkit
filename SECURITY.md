@@ -108,10 +108,17 @@ Multiple roots are separated by the platform path separator (`:` on Unix,
 
 ## Output handling
 
-- Outputs go to `MCT_OUTPUT_DIR`, default `output/` in the repository.
-- **Nothing ever overwrites the input.** Every operation writes a new file.
-- An explicit `output_path` will not replace an existing file unless you also
+- Outputs go to `MCT_OUTPUT_DIR`. The default is `output/` in the repository
+  when running from a checkout, and `output/` under the server's working
+  directory when installed (for example with `uvx`).
+- **By default nothing overwrites the input.** Every operation writes a new
+  file; the only way to replace the input is to name it as `output_path` *and*
   pass `overwrite=true`.
+- An explicit `output_path` will not replace an existing file unless you also
+  pass `overwrite=true`. This holds at the moment of writing, not only at the
+  start of the call: the result is committed with an atomic hard link that
+  refuses an existing name, so a file that appears at that path while ffmpeg
+  is still running is left alone and the call fails instead.
 - Writes are staged: the engine writes to a sibling temporary file, and it is
   renamed into place only after the operation succeeds and passes the output
   size check. A crashed ffmpeg leaves no truncated `.mp4` behind, and no
