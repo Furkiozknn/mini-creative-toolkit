@@ -88,6 +88,9 @@ Paths from an MCP client are untrusted input. Resolution is:
 4. A single `stat()` decides existence, type and size. Directories, FIFOs,
    devices and sockets are refused — ffmpeg would block forever on a FIFO.
 5. Enforce `MCT_MAX_INPUT_MB`.
+6. For audio and video, refuse anything ffprobe identifies as a playlist or
+   manifest (`hls`, `dash`, `concat`, `imf`). Those formats name *other* files
+   that ffmpeg then opens itself, which the root check above never sees.
 
 **`MCT_ALLOWED_ROOTS` is unset by default.** That is the historical behaviour
 and it is stated here rather than disguised: with no roots configured, the
@@ -239,7 +242,10 @@ useless.
 
 ## Reporting a problem
 
-Open an issue at
-<https://github.com/Furkiozknn/mini-creative-toolkit/issues>. For anything you
-believe is genuinely exploitable, please describe the impact rather than
-posting a working exploit in a public issue.
+For anything you believe is exploitable, report it privately through GitHub
+Security Advisories:
+<https://github.com/Furkiozknn/mini-creative-toolkit/security/advisories/new>.
+Describe the impact and the smallest input that shows it.
+
+Everything else - a wrong error message, a limit that is too strict - is a
+normal issue at <https://github.com/Furkiozknn/mini-creative-toolkit/issues>.
