@@ -162,6 +162,14 @@ def upscale_image_auto(
         reason += (
             f" FSRCNN has no x{scale} model (only x2/x3/x4), so Lanczos was used instead."
         )
+    elif method == "real-esrgan" and scale not in upscayl.SUPPORTED_SCALES:
+        # Upscayl refuses any other factor, so routing there would turn a
+        # request this tool accepted into a hard failure.
+        method = "lanczos"
+        reason += (
+            f" Upscayl's models have no x{scale} version (only x2/x3/x4), so Lanczos "
+            f"was used instead."
+        )
 
     logger.info("upscale_image_auto: selected %s (%s)", method, reason)
 

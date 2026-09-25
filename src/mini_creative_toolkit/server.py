@@ -459,7 +459,7 @@ def upscale_image_auto(
         Field(
             description=(
                 "Whole-number enlargement factor, 1 to 8. Default 4. The models only "
-                "cover 2x, 3x and 4x; without Upscayl and a GPU, other factors use Lanczos."
+                "cover 2x, 3x and 4x; other factors use Lanczos."
             )
         ),
     ] = 4,

@@ -36,7 +36,7 @@
     "python",
     "video-processing"
   ],
-  "summary": "23 CPU-first media tools behind one MCP server: background removal, EXIF/GPS stripping, resize, thumbnails, GIFs, video trim. 20 of them report \"network\": \"none\" in their own response payload rather than in a README (remove_background, alone or inside batch_process, fetches its model weights once), and a test fails if any other module ever imports an HTTP client. GPU only for the optional Real-ESRGAN upscaler, no paid API. 354 tests.",
+  "summary": "23 CPU-first media tools behind one MCP server: background removal, EXIF/GPS stripping, resize, thumbnails, GIFs, video trim. 20 of them report \"network\": \"none\" in their own response payload rather than in a README (remove_background, alone or inside batch_process, fetches its model weights once), and a test fails if any other module ever imports an HTTP client. GPU only for the optional Real-ESRGAN upscaler, no paid API. 363 tests.",
   "key_features": [
     "23 CPU-first media tools behind one MCP server: background removal, EXIF/GPS stripping, resize, thumbnails, GIFs, video trim",
     "20 of them report \"network\": \"none\" in their own response payload rather than in a README (remove_background, alone or inside batch_process, fetches its model weights once)",
@@ -52,8 +52,8 @@
     "videos": []
   },
   "tests": {
-    "count": 354,
-    "source": "`354 passed`",
+    "count": 363,
+    "source": "`363 passed`",
     "measured": "2026-09-25"
   },
   "ci": {

@@ -78,6 +78,23 @@ def test_convert_rejects_a_format_nobody_has_heard_of(config, png):
         convert_format(str(png), "jpeg2000ish")
 
 
+@pytest.mark.parametrize("target", ["tiff", "tif", "bmp", "gif"])
+def test_convert_refuses_formats_it_can_read_but_does_not_offer(config, png, target):
+    """Pillow can encode these, so they used to slip through: the tool
+    advertises png, jpeg, webp and avif, and the output set is exactly that."""
+    with pytest.raises(UnsupportedFormatError) as excinfo:
+        convert_format(str(png), target)
+    assert "png, jpeg, webp, avif" in excinfo.value.message
+    assert not list(config.output_dir.glob("*"))
+
+
+@pytest.mark.parametrize("target", ["png", "jpeg", "jpg", "webp"])
+def test_convert_still_writes_every_advertised_format(config, png, target):
+    result = convert_format(str(png), target)
+    with Image.open(result["output_path"]) as img:
+        assert img.format == {"jpg": "JPEG"}.get(target, target.upper())
+
+
 def test_convert_quality_actually_changes_the_output_size(config, tmp_path):
     """A low quality that produced the same bytes would mean the argument was
     being ignored - which is the kind of silent no-op worth pinning."""

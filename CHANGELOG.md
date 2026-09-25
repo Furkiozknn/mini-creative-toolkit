@@ -50,6 +50,14 @@ every payload were re-measured under `strace`.
 
 ### Fixed
 
+- `convert_format` wrote TIFF, BMP and GIF when asked, although it offers
+  only png, jpeg, webp and avif: it checked what Pillow can encode rather than
+  the toolkit's own output set. Those names are now refused with an
+  `UnsupportedFormatError` listing the four formats.
+- `upscale_image_auto` accepts scales up to 8, but with Upscayl configured and
+  a discrete GPU present it sent x5-x8 to Real-ESRGAN, whose models exist only
+  for x2/x3/x4, and the call failed. Those scales now use Lanczos and the
+  selection reason says why, as they already did when FSRCNN was chosen.
 - onnxruntime's telemetry is switched off. Its official Linux wheel (1.29.0
   here) connects to `mobile.events.data.microsoft.com` as soon as it is
   imported, and rembg imports it - so `list_background_models`, and any tool

@@ -77,6 +77,14 @@ def writable_formats() -> list[str]:
 
 
 def require_writable(fmt: str) -> str:
+    # Pillow can also write TIFF, BMP and GIF, and canonical_format knows their
+    # names because they are readable. Being able to encode a format is not the
+    # same as this tool offering it: the output set is WRITABLE, nothing wider.
+    if fmt not in {FORMAT_ALIASES[name] for name in WRITABLE}:
+        raise UnsupportedFormatError(
+            f"{fmt} is readable but not an output format of this toolkit. Choose "
+            f"one of: {', '.join(WRITABLE)}."
+        )
     Image.init()
     if fmt not in Image.SAVE:
         raise UnsupportedFormatError(
