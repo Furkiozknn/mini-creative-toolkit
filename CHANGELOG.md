@@ -25,6 +25,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   MCP Registry clients - looks for; before it, the registry entry installed and
   then failed with "executable not provided".
 
+- MCP tool annotations derived from the capability table: `readOnlyHint` on
+  the five tools that write nothing, `openWorldHint` on the three that can reach
+  the network. The shared parameters (`image_path`, `video_path`, `path`,
+  `output_path`, `overwrite`, timestamps) now carry descriptions in each tool's
+  input schema, and `initialize` reports the server's real version instead of
+  an empty string.
+
 ### Fixed
 
 - `MCT_ALLOWED_ROOTS` could be sidestepped with a playlist: an HLS `.m3u8`

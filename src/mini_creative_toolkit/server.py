@@ -12,11 +12,15 @@ away from the declared requirements.
 from __future__ import annotations
 
 import functools
+from typing import Annotated
 
 from mcp.server import MCPServer
 from mcp.server.mcpserver.exceptions import ToolError
+from mcp.types import ToolAnnotations
+from pydantic import Field
 
-from .capabilities import CAPABILITIES
+from . import __version__
+from .capabilities import CAPABILITIES, NetworkNeed
 from .config import get_config
 from .errors import ToolkitError
 from .log import configure, get_logger
@@ -35,14 +39,58 @@ logger = get_logger(__name__)
 
 mcp = MCPServer(
     "mini-creative-toolkit",
+    title="Mini Creative Toolkit",
+    version=__version__,
     instructions=(
         "Local media operations for images, video and audio. Everything runs on this "
         "machine except generate_image_free, which calls a third-party service and "
-        "says so. Call list_capabilities first if you need to know what this "
+        "says so; remove_background downloads a model's weights the first time that "
+        "model is used. Call list_capabilities first if you need to know what this "
         "installation can actually do - it reports which tools are ready and which "
         "are missing ffmpeg, a GPU or an Upscayl install."
     ),
 )
+
+
+# --- shared parameter descriptions -------------------------------------------
+# These land in each tool's JSON schema, which is what a model reads when it
+# fills in arguments. Written once so twenty tools cannot drift apart.
+
+_FILE = (
+    "Path to an existing local file. Absolute paths are safest; a relative path "
+    "resolves against the server's working directory. Symlinks are followed, and "
+    "the real target must lie inside MCT_ALLOWED_ROOTS when that is set."
+)
+ImagePath = Annotated[str, Field(description=f"The image to read. {_FILE}")]
+VideoPath = Annotated[str, Field(description=f"The video (or audio) file to read. {_FILE}")]
+MediaPath = Annotated[str, Field(description=f"The image, video or audio file to read. {_FILE}")]
+OutputPath = Annotated[
+    str | None,
+    Field(
+        description=(
+            "Where to write the result. Omit it to get a fresh, never-colliding name "
+            "in MCT_OUTPUT_DIR (the result reports it). Its directory must already "
+            "exist; an existing file is refused unless overwrite is true."
+        )
+    ),
+]
+Overwrite = Annotated[
+    bool,
+    Field(description="Allow output_path to replace an existing file. Default false."),
+]
+Timestamp = Annotated[
+    str,
+    Field(description="Position in the video: HH:MM:SS, MM:SS, or a number of seconds."),
+]
+
+
+def _annotations(name: str) -> ToolAnnotations:
+    """MCP tool hints, derived from the capability table like the footer."""
+    cap = CAPABILITIES[name]
+    return ToolAnnotations(
+        read_only_hint=not cap.writes_files,
+        open_world_hint=cap.network is not NetworkNeed.NONE,
+    )
 
 
 def describe(name: str, body: str) -> str:
@@ -68,7 +116,7 @@ def _tool(name: str, body: str):
     A genuinely unexpected exception is deliberately *not* translated - it
     keeps the SDK's default masking and full server-side traceback.
     """
-    register = mcp.tool(name=name, description=describe(name, body))
+    register = mcp.tool(name=name, description=describe(name, body), annotations=_annotations(name))
 
     def decorator(func):
         @functools.wraps(func)
@@ -124,7 +172,7 @@ def list_presets() -> dict:
     "count. For audio: codec, duration, sample rate, channels. Use this before "
     "deciding how to process something rather than guessing from the file extension.",
 )
-def inspect_media(path: str) -> dict:
+def inspect_media(path: MediaPath) -> dict:
     return inspect_tools.inspect_media(path)
 
 
@@ -138,12 +186,12 @@ def inspect_media(path: str) -> dict:
     "width x height. Returns the output path and the dimensions actually produced.",
 )
 def resize_image(
-    image_path: str,
+    image_path: ImagePath,
     width: int,
     height: int,
     keep_aspect: bool = True,
-    output_path: str | None = None,
-    overwrite: bool = False,
+    output_path: OutputPath = None,
+    overwrite: Overwrite = False,
 ) -> dict | str:
     return image_tools.resize_image(image_path, width, height, keep_aspect, output_path, overwrite)
 
@@ -157,13 +205,13 @@ def resize_image(
     "so in the result rather than dropping alpha silently.",
 )
 def convert_format(
-    image_path: str,
+    image_path: ImagePath,
     target_format: str,
     quality: int | None = None,
     lossless: bool = False,
     background: str = "white",
-    output_path: str | None = None,
-    overwrite: bool = False,
+    output_path: OutputPath = None,
+    overwrite: Overwrite = False,
 ) -> dict | str:
     return image_tools.convert_format(
         image_path, target_format, quality, lossless, background, output_path, overwrite
@@ -178,7 +226,7 @@ def convert_format(
     "what was actually removed.",
 )
 def strip_metadata(
-    image_path: str, output_path: str | None = None, overwrite: bool = False
+    image_path: ImagePath, output_path: OutputPath = None, overwrite: Overwrite = False
 ) -> dict | str:
     return image_tools.strip_metadata(image_path, output_path, overwrite)
 
@@ -191,13 +239,13 @@ def strip_metadata(
     "does not modify the underlying pixels' content.",
 )
 def add_watermark(
-    image_path: str,
+    image_path: ImagePath,
     text: str,
     position: str = "bottom-right",
     opacity: float = 0.5,
     font_size: int = 24,
-    output_path: str | None = None,
-    overwrite: bool = False,
+    output_path: OutputPath = None,
+    overwrite: Overwrite = False,
 ) -> dict | str:
     return image_tools.add_watermark(
         image_path, text, position, opacity, font_size, output_path, overwrite
@@ -213,10 +261,10 @@ def add_watermark(
     "falls back to rembg's own internal default.",
 )
 def remove_background(
-    image_path: str,
+    image_path: ImagePath,
     model: str = "u2net",
-    output_path: str | None = None,
-    overwrite: bool = False,
+    output_path: OutputPath = None,
+    overwrite: Overwrite = False,
 ) -> dict | str:
     return background_tools.remove_background(image_path, model, output_path, overwrite)
 
@@ -234,8 +282,8 @@ def create_contact_sheet(
     padding: int = 12,
     labels: bool = True,
     background: str = "white",
-    output_path: str | None = None,
-    overwrite: bool = False,
+    output_path: OutputPath = None,
+    overwrite: Overwrite = False,
 ) -> dict | str:
     return image_tools.create_contact_sheet(
         image_paths, thumbnail_size, columns, padding, labels, background, output_path, overwrite
@@ -249,7 +297,10 @@ def create_contact_sheet(
     "similarity score is a rough guide only and is explicitly not forensic evidence "
     "of identity or provenance. Writes nothing.",
 )
-def compare_images(image_a: str, image_b: str) -> dict:
+def compare_images(
+    image_a: Annotated[str, Field(description=f"First image. {_FILE}")],
+    image_b: Annotated[str, Field(description=f"Second image. {_FILE}")],
+) -> dict:
     return image_tools.compare_images(image_a, image_b)
 
 
@@ -264,7 +315,7 @@ def compare_images(image_a: str, image_b: str) -> dict:
     "default on machines without one.",
 )
 def upscale_image_fast(
-    image_path: str, scale: int = 4, output_path: str | None = None, overwrite: bool = False
+    image_path: ImagePath, scale: int = 4, output_path: OutputPath = None, overwrite: Overwrite = False
 ) -> dict | str:
     return upscale_tools.upscale_image_fast(image_path, scale, output_path, overwrite)
 
@@ -279,11 +330,11 @@ def upscale_image_fast(
     "upscale_image_auto unless you specifically want this method.",
 )
 def upscale_image(
-    image_path: str,
+    image_path: ImagePath,
     scale: int = 4,
     model: str = "upscayl-standard-4x",
-    output_path: str | None = None,
-    overwrite: bool = False,
+    output_path: OutputPath = None,
+    overwrite: Overwrite = False,
 ) -> dict | str:
     return upscale_tools.upscale_image(image_path, scale, model, output_path, overwrite)
 
@@ -297,7 +348,7 @@ def upscale_image(
     "the result says so.",
 )
 def upscale_image_auto(
-    image_path: str, scale: int = 4, output_path: str | None = None, overwrite: bool = False
+    image_path: ImagePath, scale: int = 4, output_path: OutputPath = None, overwrite: Overwrite = False
 ) -> dict | str:
     return upscale_tools.upscale_image_auto(image_path, scale, output_path, overwrite)
 
@@ -310,10 +361,10 @@ def upscale_image_auto(
     "number of seconds. Requires ffmpeg on PATH.",
 )
 def video_thumbnail(
-    video_path: str,
-    timestamp: str = "00:00:01",
-    output_path: str | None = None,
-    overwrite: bool = False,
+    video_path: VideoPath,
+    timestamp: Timestamp = "00:00:01",
+    output_path: OutputPath = None,
+    overwrite: Overwrite = False,
 ) -> dict | str:
     return video_tools.video_thumbnail(video_path, timestamp, output_path, overwrite)
 
@@ -326,14 +377,14 @@ def video_thumbnail(
     "of frames is refused rather than silently producing a huge file. Requires ffmpeg.",
 )
 def video_to_gif(
-    video_path: str,
-    start: str = "00:00:00",
+    video_path: VideoPath,
+    start: Timestamp = "00:00:00",
     duration: float = 3.0,
     fps: int = 12,
     width: int = 480,
     loop: int = 0,
-    output_path: str | None = None,
-    overwrite: bool = False,
+    output_path: OutputPath = None,
+    overwrite: Overwrite = False,
 ) -> dict | str:
     return video_tools.video_to_gif(
         video_path, start, duration, fps, width, loop, output_path, overwrite
@@ -348,11 +399,11 @@ def video_to_gif(
     "ffmpeg and ffprobe.",
 )
 def video_trim(
-    video_path: str,
-    start: str,
+    video_path: VideoPath,
+    start: Timestamp,
     duration: float,
-    output_path: str | None = None,
-    overwrite: bool = False,
+    output_path: OutputPath = None,
+    overwrite: Overwrite = False,
 ) -> dict | str:
     return video_tools.video_trim(video_path, start, duration, output_path, overwrite)
 
@@ -364,13 +415,13 @@ def video_trim(
     "and slower than a trim. Requires ffmpeg and ffprobe.",
 )
 def video_resize(
-    video_path: str,
+    video_path: VideoPath,
     width: int,
     height: int | None = None,
     keep_aspect: bool = True,
     crf: int = 23,
-    output_path: str | None = None,
-    overwrite: bool = False,
+    output_path: OutputPath = None,
+    overwrite: Overwrite = False,
 ) -> dict | str:
     return video_tools.video_resize(
         video_path, width, height, keep_aspect, crf, output_path, overwrite
@@ -386,11 +437,11 @@ def video_resize(
     "'saving'. Requires ffmpeg and ffprobe.",
 )
 def video_compress(
-    video_path: str,
+    video_path: VideoPath,
     crf: int = 28,
     preset: str = "medium",
-    output_path: str | None = None,
-    overwrite: bool = False,
+    output_path: OutputPath = None,
+    overwrite: Overwrite = False,
 ) -> dict | str:
     return video_tools.video_compress(video_path, crf, preset, output_path, overwrite)
 
@@ -401,10 +452,10 @@ def video_compress(
     "the file has no audio stream rather than producing an empty file. Requires ffmpeg.",
 )
 def extract_audio(
-    video_path: str,
+    video_path: VideoPath,
     audio_format: str = "mp3",
-    output_path: str | None = None,
-    overwrite: bool = False,
+    output_path: OutputPath = None,
+    overwrite: Overwrite = False,
 ) -> dict | str:
     return video_tools.extract_audio(video_path, audio_format, output_path, overwrite)
 
@@ -421,13 +472,13 @@ def extract_audio(
     "silently, and a result that came out larger than the input says so.",
 )
 def optimize_media(
-    path: str,
+    path: MediaPath,
     goal: str = "web",
     max_width: int | None = None,
     max_height: int | None = None,
     preset: str | None = None,
-    output_path: str | None = None,
-    overwrite: bool = False,
+    output_path: OutputPath = None,
+    overwrite: Overwrite = False,
 ) -> dict | str:
     return optimize_tools.optimize_media(
         path, goal, max_width, max_height, preset, output_path, overwrite
@@ -460,15 +511,17 @@ def batch_process(
     "MACHINE: the prompt text is sent to Pollinations.ai, a third-party service, over "
     "the network. No API key or account is needed today, but that is the service's "
     "current policy and not a guarantee. Do not use it for prompts containing "
-    "confidential information. Every other tool in this server is fully local.",
+    "confidential information. Every other tool runs on this machine and sends "
+    "none of your data anywhere; remove_background only downloads model weights "
+    "the first time a model is used.",
 )
 def generate_image_free(
     prompt: str,
     width: int = 1024,
     height: int = 1024,
     seed: int | None = None,
-    output_path: str | None = None,
-    overwrite: bool = False,
+    output_path: OutputPath = None,
+    overwrite: Overwrite = False,
 ) -> dict | str:
     return generate_tools.generate_image_free(prompt, width, height, seed, output_path, overwrite)
 

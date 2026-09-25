@@ -59,6 +59,46 @@ def test_descriptions_are_short_enough_to_be_useful_in_discovery():
         assert len(tool.description) < 1400, f"{tool.name}: {len(tool.description)}"
 
 
+def test_the_server_reports_its_real_version():
+    """initialize used to answer serverInfo.version = "" - the SDK default."""
+    from mini_creative_toolkit import __version__
+
+    assert mcp.version == __version__
+
+
+def test_tool_annotations_follow_the_capability_table():
+    """readOnlyHint lets a client skip the confirmation prompt for tools that
+    write nothing; openWorldHint flags the ones that can reach the network.
+    Both are derived from the same table as the description footer."""
+    from mini_creative_toolkit.capabilities import NetworkNeed
+
+    for tool in _tools():
+        cap = CAPABILITIES[tool.name]
+        assert tool.annotations is not None, tool.name
+        assert tool.annotations.read_only_hint is (not cap.writes_files), tool.name
+        assert tool.annotations.open_world_hint is (cap.network is not NetworkNeed.NONE), tool.name
+    by_name = {t.name: t for t in _tools()}
+    assert by_name["inspect_media"].annotations.read_only_hint is True
+    assert by_name["generate_image_free"].annotations.open_world_hint is True
+    assert by_name["resize_image"].annotations.open_world_hint is False
+
+
+def test_shared_parameters_are_described_in_the_schema():
+    """output_path and overwrite appear on 20 tools; a model deciding whether
+    it may pass a relative path or replace a file reads the schema, not the
+    README."""
+    seen = 0
+    for tool in _tools():
+        props = tool.input_schema["properties"]
+        for name in ("output_path", "overwrite", "image_path", "video_path", "path"):
+            if name in props:
+                seen += 1
+                assert props[name].get("description"), f"{tool.name}.{name}"
+    assert seen > 40
+    trim = next(t for t in _tools() if t.name == "video_trim")
+    assert "HH:MM:SS" in trim.input_schema["properties"]["start"]["description"]
+
+
 def test_the_capability_footer_is_generated_not_written_by_hand():
     text = describe("resize_image", "Body.")
     assert text.startswith("Body.")
