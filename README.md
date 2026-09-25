@@ -9,8 +9,18 @@
   <img src="https://img.shields.io/badge/hosted%20tools-1%20of%2023-ff9f5a?style=flat-square" alt="1 of 23 tools is hosted">
 </p>
 
+![mct inspecting a JPEG and then stripping its metadata: has_exif goes from true to false and every removed key is listed, with execution local and network none on both calls](assets/demo.gif)
+
+<sub>Real output. Every tool prints <code>execution</code> and <code>network</code> in its own payload — that is where the "22 of 23 are local" claim is checked, not in this README.</sub>
+
 <p align="center"><b>Local media operations for MCP clients. Images, video and audio.</b><br>
 CPU-first. No paid APIs. External network access is isolated to one tool and explicitly documented.</p>
+
+<p align="center">
+  <img src="assets/tool-call.svg" alt="One MCP tool call to inspect_media and its response, which reports execution local and network none" width="680">
+</p>
+
+<p align="center"><sub><i>A real call and a real response. <code>"network": "none"</code> is not a claim in this README — the server puts it in the payload, on 22 of its 23 tools.</i></sub></p>
 
 ---
 
@@ -444,10 +454,27 @@ GIF is a poor format above a few hundred frames; lower one of them.
 **Something failed and the message is short** — that is deliberate. Re-run
 with `MCT_LOG_LEVEL=verbose` or `--log-level verbose` for the underlying log.
 
-**Files appear in an unexpected place** — set `MCT_OUTPUT_DIR`. The default is
-`output/` inside the repository, preserved from before 2.0.
+**Files appear in an unexpected place** — set `MCT_OUTPUT_DIR`. Run from a
+checkout, the default is `output/` inside the repository, preserved from before
+2.0; installed as a package it is `output/` under the current directory.
 
 ---
+
+## What this server can actually do
+
+The expensive question about an MCP server is not what it promises but what it
+**can do on your machine**: which credentials it can touch, where it connects,
+what it runs. Answering that means reading the source, and most people will not.
+
+On every push, [mcp-vet](https://github.com/Furkiozknn/mcp-vet) from the same
+account audits this server from source and writes the whole report into the job
+summary. Today's verdict: **MEDIUM** (it spawns external processes - a real and documented capability). The gate closes at HIGH and
+above — and it also closes if the tool itself could not run, because "I could not
+look" should not read as green.
+
+Auditing our own server with our own tool had a side effect worth recording: adding
+this job surfaced a real false positive in mcp-vet, which was fixed. A tool nobody
+runs stays right by default.
 
 ## Limitations
 
@@ -485,3 +512,16 @@ Model weights, external binaries and dependencies carry their own terms — and
 one commonly-reachable rembg model is **non-commercial**. See
 [`THIRD_PARTY.md`](THIRD_PARTY.md) before assuming MIT applies to what a tool
 hands you.
+
+---
+
+## More from this ecosystem
+
+- **[local-notes-search-mcp](https://github.com/Furkiozknn/local-notes-search-mcp)** — ask your own files a question, with no network
+- **[nvidia-nim-mcp](https://github.com/Furkiozknn/nvidia-nim-mcp)** — seven MCP tools on NVIDIA NIM's free tier
+- **[voice-io-mcp](https://github.com/Furkiozknn/voice-io-mcp)** — speech in and out, needing no API key
+- **[mcp-vet](https://github.com/Furkiozknn/mcp-vet)** — audits an MCP server's source before you install it
+
+<sub>All of them in one searchable page: **[furkiozknn.github.io](https://furkiozknn.github.io/)** — each card is generated from that repository's own <code>project-meta.json</code>.</sub>
+
+<!-- mcp-name: io.github.Furkiozknn/mini-creative-toolkit -->

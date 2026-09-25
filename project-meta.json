@@ -1,0 +1,90 @@
+{
+  "schema_version": "1.0.0",
+  "id": "mini-creative-toolkit",
+  "owner": "Furkiozknn",
+  "repository": "https://github.com/Furkiozknn/mini-creative-toolkit",
+  "homepage": "https://furkiozknn.github.io/#mini-creative-toolkit",
+  "releases": "https://github.com/Furkiozknn/mini-creative-toolkit/releases",
+  "status": "active",
+  "category": "mcp-server",
+  "platform": [
+    "mcp",
+    "cli"
+  ],
+  "primary_language": "Python",
+  "technologies": [
+    "Python 3.11+",
+    "Pillow",
+    "FFmpeg",
+    "CPU-only"
+  ],
+  "version": "2.0.0",
+  "license": "MIT",
+  "topics": [
+    "background-removal",
+    "claude-code",
+    "cpu-only",
+    "ffmpeg",
+    "image-processing",
+    "mcp",
+    "mcp-server",
+    "media-tools",
+    "model-context-protocol",
+    "no-api-key",
+    "offline-first",
+    "pillow",
+    "python",
+    "video-processing"
+  ],
+  "summary": "23 CPU-first media tools behind one MCP server: background removal, EXIF/GPS stripping, resize, thumbnails, GIFs, video trim. 22 of them report \"network\": \"none\" in their own response payload rather than in a README, and a test fails if any other module ever imports an HTTP client. No GPU, no paid API. 326 tests.",
+  "key_features": [
+    "23 CPU-first media tools behind one MCP server: background removal, EXIF/GPS stripping, resize, thumbnails, GIFs, video trim",
+    "22 of them report \"network\": \"none\" in their own response payload rather than in a README",
+    "A test fails if any other module ever imports an HTTP client",
+    "No GPU and no paid API; rembg's CC-BY-NC default model is refused unless you opt in knowingly"
+  ],
+  "media": {
+    "hero": "assets/banner.svg",
+    "screenshots": [],
+    "gifs": [
+      "assets/demo.gif"
+    ],
+    "videos": []
+  },
+  "tests": {
+    "count": 327,
+    "source": "`327 passed`",
+    "measured": "2026-09-22"
+  },
+  "ci": {
+    "workflows": [
+      "ci.yml",
+      "yayinla.yml"
+    ],
+    "badge": "https://github.com/Furkiozknn/mini-creative-toolkit/actions/workflows/ci.yml/badge.svg"
+  },
+  "docs": {
+    "readme": "README.md",
+    "changelog": "CHANGELOG.md",
+    "version_history": null,
+    "roadmap": null,
+    "security": "SECURITY.md",
+    "contributing": "CONTRIBUTING.md",
+    "license_file": "LICENSE"
+  },
+  "social": {
+    "headline": "23 media tools that prove they are offline in their own response payload.",
+    "hashtags": [
+      "mcp",
+      "ffmpeg",
+      "imageprocessing",
+      "offlinefirst"
+    ],
+    "primary_link": "https://github.com/Furkiozknn/mini-creative-toolkit"
+  },
+  "provenance": {
+    "generated_at": "2026-09-22",
+    "generator": "schema/uret.py",
+    "rule": "mechanical fields read from the repository and the GitHub API; editorial fields hand-written and reviewed; no field is generated from a guess"
+  }
+}

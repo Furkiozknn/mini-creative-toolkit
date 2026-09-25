@@ -9,16 +9,34 @@ legitimately exceeds.
 from __future__ import annotations
 
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Mapping
 
 from .errors import InvalidInputError
 
-#: Where outputs land when ``MCT_OUTPUT_DIR`` is unset. Historically this was
-#: ``output/`` next to ``toolkit.py``; that path is preserved so existing
-#: setups keep finding their files in the same place.
-DEFAULT_OUTPUT_DIR = Path(__file__).resolve().parents[2] / "output"
+def default_output_dir() -> Path:
+    """Where outputs land when ``MCT_OUTPUT_DIR`` is unset.
+
+    Historically this was ``output/`` next to ``toolkit.py``, and that path is
+    preserved for anyone running from a checkout. ``parents[2]`` only names the
+    repository root under the src layout, though: installed non-editably this
+    module lives in ``site-packages``, where the same walk lands somewhere in
+    the interpreter's own tree and outputs would be written there. So the
+    src-layout root is used only when it really is one - the repository's
+    ``pyproject.toml`` next to this package's ``src`` directory - and otherwise
+    the default is ``output/`` under the current working directory.
+    """
+    root = Path(__file__).resolve().parents[2]
+    if (root / "pyproject.toml").is_file() and (root / "src" / __package__).is_dir():
+        return root / "output"
+    return Path.cwd() / "output"
+
+
+#: Resolved at import time for anything that wants to read the default without
+#: building a :class:`Config`. ``Config`` itself re-resolves per instance, so a
+#: later change of working directory is honoured.
+DEFAULT_OUTPUT_DIR = default_output_dir()
 
 _TRUE = {"1", "true", "yes", "on"}
 _FALSE = {"0", "false", "no", "off"}
@@ -99,7 +117,7 @@ def _env_path(env: Mapping[str, str], name: str) -> Path | None:
 class Config:
     """Resolved settings. Immutable; rebuild it to change anything."""
 
-    output_dir: Path = DEFAULT_OUTPUT_DIR
+    output_dir: Path = field(default_factory=default_output_dir)
     #: Empty means "no filesystem restriction beyond the OS's own". See
     #: SECURITY.md - this toolkit is not a sandbox, and pretending an empty
     #: default is one would be the dishonest choice.
@@ -179,7 +197,7 @@ class Config:
             )
 
         output_raw = _get(env, "MCT_OUTPUT_DIR")
-        output_dir = Path(output_raw).expanduser() if output_raw else DEFAULT_OUTPUT_DIR
+        output_dir = Path(output_raw).expanduser() if output_raw else default_output_dir()
 
         return cls(
             output_dir=output_dir,
