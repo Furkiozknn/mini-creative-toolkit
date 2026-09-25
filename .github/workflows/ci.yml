@@ -125,17 +125,36 @@ jobs:
       - name: The documented registration command works from another directory
         working-directory: ${{ runner.temp }}
         run: |
-          printf '%s\n' \
-            '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"ci","version":"0"}}}' \
-            '{"jsonrpc":"2.0","method":"notifications/initialized"}' \
-            '{"jsonrpc":"2.0","id":2,"method":"tools/list"}' \
-            | MCT_LOG_LEVEL=quiet timeout 120 uv run --project "$GITHUB_WORKSPACE" mini-creative-toolkit > rpc.jsonl
-          python3 - <<'PY'
-          import json
-          replies = {r.get("id"): r for r in map(json.loads, open("rpc.jsonl"))}
-          tools = replies[2]["result"]["tools"]
+          # A real client keeps stdin open until it has its answers. Piping the
+          # requests with printf closed stdin at once, and the server may shut
+          # down before answering tools/list - which is what an earlier version
+          # of this step raced on. Each reply is read before the next request.
+          MCT_LOG_LEVEL=quiet timeout 120 python3 - <<'PY'
+          import json, os, subprocess
+          proc = subprocess.Popen(
+              ["uv", "run", "--project", os.environ["GITHUB_WORKSPACE"], "mini-creative-toolkit"],
+              stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True,
+          )
+          def send(message):
+              proc.stdin.write(json.dumps(message) + "\n")
+              proc.stdin.flush()
+          def reply(request_id):
+              for line in proc.stdout:
+                  message = json.loads(line)
+                  if message.get("id") == request_id:
+                      return message
+              raise SystemExit(f"server closed stdout before answering request {request_id}")
+          send({"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {
+              "protocolVersion": "2025-06-18", "capabilities": {},
+              "clientInfo": {"name": "ci", "version": "0"}}})
+          info = reply(1)["result"]["serverInfo"]
+          send({"jsonrpc": "2.0", "method": "notifications/initialized"})
+          send({"jsonrpc": "2.0", "id": 2, "method": "tools/list"})
+          tools = reply(2)["result"]["tools"]
+          proc.stdin.close()
+          proc.wait(timeout=30)
           assert len(tools) == 23, len(tools)
-          print("initialize:", replies[1]["result"]["serverInfo"], "| tools/list:", len(tools))
+          print("initialize:", info, "| tools/list:", len(tools))
           PY
 
       - name: The CLI works end to end
