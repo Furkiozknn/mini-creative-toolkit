@@ -270,7 +270,14 @@ class _Staged:
         self._final = final
         final.parent.mkdir(parents=True, exist_ok=True)
         ext = normalize_extension(final.suffix or self._ext)
-        self.tmp = final.with_name(f"{final.stem}.part-{secrets.token_hex(4)}.{ext}")
+        # The staging name is what ffmpeg is handed, and ffmpeg's image muxer
+        # expands `%d` in it: a caller's `frame%03d.png` made it write
+        # `frame1.part-*.png` instead - an orphan nobody cleaned up. The stem
+        # is reduced to filename-safe characters here; the *final* name is
+        # still exactly what the caller asked for, because os.replace takes it
+        # literally.
+        stem = safe_stem(final.stem, fallback=safe_stem(self._prefix, fallback="output"))
+        self.tmp = final.with_name(f"{stem}.part-{secrets.token_hex(4)}.{ext}")
         return self
 
     def __exit__(self, exc_type, exc, tb) -> bool:
