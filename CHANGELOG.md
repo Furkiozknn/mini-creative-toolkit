@@ -64,6 +64,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `generate_image_free` validates `output_path` before the prompt is sent, and
   `remove_background` before the model loads, so an unusable destination fails
   first instead of after a third-party request or a model download.
+- The README's Claude Code registration command,
+  `uv run --project /path/to/repo toolkit.py`, only connected when Claude Code
+  was started inside the repository: uv resolves `toolkit.py` against the
+  current directory. It now runs the `mini-creative-toolkit` console script,
+  the README also shows a no-checkout `uvx --from git+...` form, and CI starts
+  the documented command from another directory and checks `tools/list`.
 - The default output directory no longer assumes a source checkout. Installed
   non-editably, `output/` is resolved under the current working directory
   instead of inside the interpreter's own tree.

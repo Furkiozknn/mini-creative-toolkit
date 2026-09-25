@@ -117,6 +117,27 @@ jobs:
           echo "" | timeout 60 uv run python -m mini_creative_toolkit
           echo "" | timeout 60 uv run toolkit.py
 
+      # What README "Register as an MCP server" tells people to run, started
+      # from outside the checkout the way Claude Code starts it. The older
+      # `uv run --project <repo> toolkit.py` passed the step above (run from
+      # the repo root) and failed everywhere else: uv resolves toolkit.py
+      # against the current directory.
+      - name: The documented registration command works from another directory
+        working-directory: ${{ runner.temp }}
+        run: |
+          printf '%s\n' \
+            '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"ci","version":"0"}}}' \
+            '{"jsonrpc":"2.0","method":"notifications/initialized"}' \
+            '{"jsonrpc":"2.0","id":2,"method":"tools/list"}' \
+            | MCT_LOG_LEVEL=quiet timeout 120 uv run --project "$GITHUB_WORKSPACE" mini-creative-toolkit > rpc.jsonl
+          python3 - <<'PY'
+          import json
+          replies = {r.get("id"): r for r in map(json.loads, open("rpc.jsonl"))}
+          tools = replies[2]["result"]["tools"]
+          assert len(tools) == 23, len(tools)
+          print("initialize:", replies[1]["result"]["serverInfo"], "| tools/list:", len(tools))
+          PY
+
       - name: The CLI works end to end
         run: |
           uv run mct --version

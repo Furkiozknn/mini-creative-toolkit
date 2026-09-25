@@ -188,11 +188,27 @@ conflating them sends you looking for a problem you do not have:
 
 ## Install
 
+You need [uv](https://docs.astral.sh/uv/) and, for the video and audio tools,
+ffmpeg. There are two ways in; both give Claude Code the same 23 tools.
+
+**Without a checkout.** uv fetches the package from GitHub and starts the
+server; nothing is installed globally:
+
 ```bash
-uv sync
+claude mcp add --transport stdio mini-creative-toolkit -- \
+  uvx --from git+https://github.com/Furkiozknn/mini-creative-toolkit mini-creative-toolkit
 ```
 
-That installs the package and its five dependencies. The FSRCNN weights
+**From a checkout**, which also gives you the `mct` CLI:
+
+```bash
+git clone https://github.com/Furkiozknn/mini-creative-toolkit
+cd mini-creative-toolkit
+uv sync
+uv run mct capabilities          # what this machine can run, and what is missing
+```
+
+`uv sync` installs the package and its five dependencies. The FSRCNN weights
 (~120 KB total) ship inside the package — nothing to download.
 
 **ffmpeg and ffprobe must be on your PATH** for every video and audio tool,
@@ -225,20 +241,37 @@ variables — and every other tool keeps working. Skip this entirely and use
 
 ## Register as an MCP server
 
-```bash
-claude mcp add --transport stdio mini-creative-toolkit -- uv run --project /path/to/this/repo toolkit.py
-```
-
-`toolkit.py` is preserved as a compatibility launcher, so existing
-configurations need no change. The modern equivalents:
+From a checkout, point Claude Code at the console script with an **absolute**
+project path:
 
 ```bash
-mct serve
-python -m mini_creative_toolkit
-mini-creative-toolkit          # the console script server.json points uvx at
+claude mcp add --transport stdio mini-creative-toolkit -- \
+  uv run --project /absolute/path/to/mini-creative-toolkit mini-creative-toolkit
 ```
 
-Once a release is on PyPI, no checkout is needed:
+`claude mcp list` should then show `mini-creative-toolkit: ... - ✓ Connected`.
+Pass settings with `-e`, for example
+`claude mcp add -e MCT_ALLOWED_ROOTS=$HOME/media ...` (see
+[Configuration](#configuration)).
+
+Relative paths in tool calls resolve against the directory Claude Code was
+started in. Results land in `MCT_OUTPUT_DIR`: by default `output/` inside the
+checkout, or `output/` under that directory when the server runs via `uvx`.
+
+Older instructions said `uv run --project /path/to/repo toolkit.py`. uv
+resolves `toolkit.py` against the *current* directory, not the project, so that
+form only connects when Claude Code is started inside the repository;
+anywhere else `claude mcp list` reports "Failed to connect". Replace it with the
+command above, or give `toolkit.py` as an absolute path. Other ways to start
+the same server:
+
+```bash
+uv run mct serve
+uv run python -m mini_creative_toolkit
+uv run mini-creative-toolkit     # the console script server.json points uvx at
+```
+
+Once a release is on PyPI, the shortest form will be
 `claude mcp add --transport stdio mini-creative-toolkit -- uvx mini-creative-toolkit`.
 
 ---
@@ -246,7 +279,8 @@ Once a release is on PyPI, no checkout is needed:
 ## CLI
 
 The CLI calls the same functions the MCP server does — there is no second
-implementation of any rule.
+implementation of any rule. From a checkout, prefix each command with
+`uv run` (or activate `.venv`).
 
 ```bash
 mct inspect photo.jpg

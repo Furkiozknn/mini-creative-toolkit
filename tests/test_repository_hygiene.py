@@ -286,3 +286,25 @@ def test_the_published_network_count_matches_the_capability_table():
     assert f"on {offline} of its {total} tools" in readme
     summary = json.loads(_read(REPO_ROOT / "project-meta.json"))["summary"]
     assert f"{offline} of them report" in summary, summary
+
+
+def test_readme_registration_commands_do_not_depend_on_the_current_directory():
+    """`claude mcp add ... -- uv run --project /repo toolkit.py` was the
+    documented command, and it only connected when Claude Code was started
+    inside the repository: uv resolves a script *file* against the current
+    directory. Whatever follows `uv run --project <path>` must be a console
+    script the package declares."""
+    import tomllib
+
+    scripts = set(tomllib.loads(_read(REPO_ROOT / "pyproject.toml"))["project"]["scripts"])
+    readme = _read(REPO_ROOT / "README.md").replace("\\\n", " ")
+    commands = [line for line in readme.splitlines() if line.lstrip().startswith("claude mcp add")]
+    assert commands, "README no longer shows a claude mcp add command"
+    for command in commands:
+        words = command.split()
+        if "--project" in words:
+            target = words[words.index("--project") + 2]
+            assert target in scripts, command
+        if "--from" in words:
+            assert words[words.index("--from") + 2] in scripts, command
+        assert not any(w.endswith(".py") for w in words), command
