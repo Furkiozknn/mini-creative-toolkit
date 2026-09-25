@@ -70,6 +70,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   current directory. It now runs the `mini-creative-toolkit` console script,
   the README also shows a no-checkout `uvx --from git+...` form, and CI starts
   the documented command from another directory and checks `tools/list`.
+- `MCT_MAX_IMAGE_PIXELS` guarded what a tool read but not what `resize_image`,
+  `optimize_media` or `create_contact_sheet` would create:
+  `resize_image(<200x120 png>, 100000, 100000)` asked Pillow for an ~18 GB
+  canvas (MemoryError under a 3 GB limit; without one, the test process was
+  killed). The target size is now checked against the same budget first, as
+  the upscalers already did.
 - The default output directory no longer assumes a source checkout. Installed
   non-editably, `output/` is resolved under the current working directory
   instead of inside the interpreter's own tree.

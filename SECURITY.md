@@ -139,7 +139,7 @@ tell "this file is too big" from "this tool is broken".
 | --- | --- | --- |
 | `MCT_MAX_INPUT_MB` | 512 | Reading an enormous file into memory |
 | `MCT_MAX_OUTPUT_MB` | 1024 | Producing one |
-| `MCT_MAX_IMAGE_PIXELS` | 80,000,000 | Decompression bombs. Checked from the header **before** pixels are decoded |
+| `MCT_MAX_IMAGE_PIXELS` | 80,000,000 | Decompression bombs. Checked from the header **before** pixels are decoded - and, for resize, optimise, upscale and contact sheets, against the size of the image about to be *created* |
 | `MCT_MAX_VIDEO_DURATION` | 3600s | Multi-hour transcodes |
 | `MCT_MAX_VIDEO_WIDTH` / `_HEIGHT` | 7680 | Absurd resolutions |
 | `MCT_MAX_BATCH_ITEMS` | 200 | Unbounded batches |

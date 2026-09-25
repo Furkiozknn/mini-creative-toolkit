@@ -223,3 +223,62 @@ def test_an_operation_never_writes_over_its_own_input(config, png):
     assert result["output_path"] != str(png)
     with Image.open(png) as original:
         assert original.size == (120, 60)
+
+
+# --- output pixel budget -------------------------------------------------------
+# MCT_MAX_IMAGE_PIXELS guarded what was *read*, and the upscalers checked what
+# they would write, but resize_image, optimize_media and create_contact_sheet
+# did not: resize_image(<200x120 png>, 100000, 100000) asked Pillow for a
+# 100000x60000 canvas (~18 GB) and died with MemoryError - or took the host
+# down first. The same budget now applies to what these tools would produce.
+
+@pytest.fixture
+def small_budget(tmp_path):
+    from mini_creative_toolkit.config import Config, reset_config, set_config
+
+    cfg = Config(output_dir=tmp_path / "output", max_image_pixels=1_000_000)
+    set_config(cfg)
+    yield cfg
+    reset_config()
+
+
+@pytest.fixture
+def small_png(tmp_path):
+    path = tmp_path / "small.png"
+    Image.new("RGB", (200, 120), (10, 90, 200)).save(path)
+    return path
+
+
+def _nothing_written(cfg) -> bool:
+    return not cfg.output_dir.exists() or list(cfg.output_dir.iterdir()) == []
+
+
+def test_resize_refuses_an_output_above_the_pixel_budget(small_budget, small_png):
+    from mini_creative_toolkit.errors import ResourceLimitError
+
+    with pytest.raises(ResourceLimitError) as excinfo:
+        resize_image(str(small_png), 100_000, 100_000)
+    assert excinfo.value.limit_name == "MCT_MAX_IMAGE_PIXELS"
+    assert _nothing_written(small_budget)
+
+
+def test_resize_within_the_budget_still_enlarges(small_budget, small_png):
+    result = resize_image(str(small_png), 1000, 600)
+    assert (result["actual_width"], result["actual_height"]) == (1000, 600)
+
+
+def test_optimize_refuses_to_enlarge_past_the_pixel_budget(small_budget, small_png):
+    from mini_creative_toolkit.errors import ResourceLimitError
+    from mini_creative_toolkit.tools.optimize import optimize_media
+
+    with pytest.raises(ResourceLimitError):
+        optimize_media(str(small_png), max_width=100_000, max_height=100_000)
+    assert _nothing_written(small_budget)
+
+
+def test_a_contact_sheet_above_the_pixel_budget_is_refused(small_budget, small_png):
+    from mini_creative_toolkit.errors import ResourceLimitError
+
+    with pytest.raises(ResourceLimitError):
+        create_contact_sheet([str(small_png)] * 20, thumbnail_size=2000, columns=20)
+    assert _nothing_written(small_budget)

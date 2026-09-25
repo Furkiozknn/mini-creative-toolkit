@@ -360,7 +360,7 @@ limit your real workload legitimately exceeds.
 | `MCT_ALLOWED_ROOTS` | *(unset)* | Restrict file access to these directories |
 | `MCT_MAX_INPUT_MB` | 512 | Largest input file |
 | `MCT_MAX_OUTPUT_MB` | 1024 | Largest output file |
-| `MCT_MAX_IMAGE_PIXELS` | 80000000 | Decompression-bomb guard |
+| `MCT_MAX_IMAGE_PIXELS` | 80000000 | Largest image read (decompression-bomb guard) or produced (resize, upscale, contact sheet) |
 | `MCT_MAX_VIDEO_DURATION` | 3600 | Longest video, in seconds |
 | `MCT_MAX_VIDEO_WIDTH` / `_HEIGHT` | 7680 | Largest video dimensions |
 | `MCT_MAX_BATCH_ITEMS` | 200 | Largest batch |
