@@ -1,6 +1,6 @@
 [project]
 name = "mini-creative-toolkit"
-version = "2.0.0"
+version = "2.1.0"
 description = "Local media operations for MCP clients - images, video and audio. CPU-first, no paid APIs, external network access isolated and documented."
 readme = "README.md"
 license = "MIT"

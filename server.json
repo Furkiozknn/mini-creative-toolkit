@@ -3,7 +3,7 @@
   "name": "io.github.Furkiozknn/mini-creative-toolkit",
   "title": "Mini Creative Toolkit",
   "description": "23 CPU-first image, video and audio tools in one MCP server; 20 never touch the network.",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "repository": {
     "url": "https://github.com/Furkiozknn/mini-creative-toolkit",
     "source": "github"
@@ -12,7 +12,7 @@
     {
       "registryType": "pypi",
       "identifier": "mini-creative-toolkit",
-      "version": "2.0.0",
+      "version": "2.1.0",
       "runtimeHint": "uvx",
       "transport": {
         "type": "stdio"

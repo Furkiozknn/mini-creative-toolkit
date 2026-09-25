@@ -11,5 +11,5 @@ import os as _os
 # explicit value in the environment is left alone.
 _os.environ.setdefault("ORT_DISABLE_TELEMETRY", "1")
 
-__version__ = "2.0.0"
+__version__ = "2.1.0"
 __all__ = ["__version__"]

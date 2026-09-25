@@ -14,6 +14,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.1.0] - 2026-09-25
+
+The first version meant to be published: `server.json` now passes the MCP
+Registry schema, `uvx` has a console script to run, and the network claims in
+every payload were re-measured under `strace`.
+
 ### Added
 
 - Model reuse across calls: `rembg` sessions are cached per model name and
