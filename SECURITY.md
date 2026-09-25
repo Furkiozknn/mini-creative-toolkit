@@ -196,6 +196,17 @@ in the toolkit is affected.
 
 The toolkit never downloads and executes a binary.
 
+## Dependency telemetry
+
+onnxruntime (pulled in by rembg) ships with telemetry **on** in its official
+Linux and macOS wheels: importing it starts an uploader that connects to
+`mobile.events.data.microsoft.com`. Observed with onnxruntime 1.29.0 under
+`strace`, including from `list_background_models`, a tool that reports
+`network: none`. The package therefore sets `ORT_DISABLE_TELEMETRY=1`, the
+switch onnxruntime documents in its `Privacy.md`, when it is imported and before
+anything can import onnxruntime; with it set, the same trace shows no
+connection. If you set `ORT_DISABLE_TELEMETRY` yourself, your value is kept.
+
 ---
 
 ## Logging
