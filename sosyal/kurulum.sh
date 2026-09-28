@@ -11,6 +11,8 @@ curl -sSfL -o "$M/depth_vits.onnx" $R/fabio-sim/Depth-Anything-ONNX/releases/dow
 curl -sSfL -o "$M/silero_vad.onnx" $R/k2-fsa/sherpa-onnx/releases/download/asr-models/silero_vad.onnx
 curl -sSfL $R/k2-fsa/sherpa-onnx/releases/download/asr-models/sherpa-onnx-whisper-small.tar.bz2 | tar xj -C "$M"
 curl -sSfL -o "$HOME/.u2net/u2net_human_seg.onnx" $R/danielgatis/rembg/releases/download/v0.0.0/u2net_human_seg.onnx
+# Scene cuts, audio FX, jump cuts, emoji rasterising (all measured working here, 28.09.2026)
+pip install --break-system-packages -q "scenedetect[opencv-headless]==0.6.7" "pedalboard==0.9.25" "auto-editor==29.3.1" cairosvg
 # Real-instrument music (muzik.py): tinysoundfont wheel without its optional pyaudio dep,
 # GeneralUser GS soundfont (v2.0.3, free for music creation incl. commercial, ~32 MB).
 pip install --break-system-packages -q --no-deps "tinysoundfont==0.3.7"

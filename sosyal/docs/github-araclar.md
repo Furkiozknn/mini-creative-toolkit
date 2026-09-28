@@ -94,3 +94,18 @@
 - **UI UX Pro Max** ([nextlevelbuilder/ui-ux-pro-max-skill](https://github.com/nextlevelbuilder/ui-ux-pro-max-skill), MIT, 2.13.0). Kullanıcının isteğiyle bilgisayarındaki Claude Code'a eklenti olarak kuruldu. Betikleri yalnız standart kütüphane, ağ çağrısı yok (kaynak okundu); `search.py --design-system` bu konteynerde çalıştı.
 - **Müzik:** [GeneralUser GS](https://github.com/mrbumpy409/GeneralUser-GS) soundfont (v2.0.3, lisans: müzik üretiminde ticari dahil serbest) + `tinysoundfont` 0.3.7 → `muzik.py`. 7 tür üretildi; librosa ile ölçülen tempolar hedefle tutarlı (ör. synthwave 111→112, lofi 80→81, trap 142 yarım zaman 72), parlaklık 1126–2691 Hz aralığında ayrışıyor. Kulakla dinlenmedi.
 - Değerlendirilip kurulmayanlar: `remotion-dev/skills` (Remotion şirket lisansı), `calesthio/OpenMontage` ve `hypit-ai/hypit` (ücretli üretim API'lerine dayanıyor, önce ayrıca incelenmeli), `browser-use/video-use` (MIT; konuşan kafa kurgusu için, ilk gerçek videoda denenecek).
+
+### Tur 2b: kullanıcının bilgisayarına kurulanlar (28.09.2026 22:30)
+
+Bağımsız bir ajan 11 depoyu klonlayıp okudu (hiçbirini çalıştırmadan): lisans, son commit, kurulum yolu, ücretli anahtar gereksinimi, `curl | sh`, çalışma anında uzaktan talimat, hook, telemetri.
+
+| Kurulan | Nasıl | Sabitlenen commit | Not |
+|---|---|---|---|
+| bang-motion (MIT) | eklenti `bang-motion@bang-motion` | marketplace | tarayıcı motion graphics (GSAP); belgeler çoğunlukla Endonezce |
+| remotion-dev/skills (12 beceri) | `~/.claude/skills/remotion-*` | cf49eff | depoda LICENSE yok; Remotion bireye ücretsiz |
+| saas-motion-kit (MIT) | `~/.claude/skills/saas-motion-video` (depo kökü + SKILL.md) | c1f8a08 | HyperFrames promo şablonu, çeşitlilik denetimi var |
+| ghost-editor (MIT) | `~/.claude/skills/ghost-editor` | da74538 | konuşan kafa reels; yerel Whisper; mixkit SFX lisansını paylaşmadan önce kontrol et |
+
+Kurulmayanlar: video-use (transkripsiyon için ElevenLabs anahtarı şart), motion-video-skill (Gemini + ElevenLabs), vibe-motion/skills (lisans yok, çalışırken sabitlenmemiş uzak kod çekiyor), iart-ai/motion-skills (yalnız dizin), manim_skill (zaten var), claude-shorts (Whisper large-v3 HF'den iniyor; bu ortamda çalışmaz).
+
+Konteyner tarafı: `scenedetect` 0.6.7, `pedalboard` 0.9.25, `auto-editor` 29.3.1 (PyPI tekerleği; GitHub API bu ortamda kapalı olduğu için son ikili sürüm denetlenemedi), `cairosvg`, Twemoji SVG (raw.githubusercontent). Noto Emoji ham dosyaları 404 verdi.

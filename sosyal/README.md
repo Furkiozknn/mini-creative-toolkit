@@ -15,6 +15,7 @@ OpenCV ve GitHub release'lerinden inen modellerle çalışır (Hugging Face gere
 | `muzik.py` | Gerçek çalgı sesleriyle (GeneralUser GS soundfont) 7 türde tohumlu arka plan müziği: lofi, synthwave, trap, epik, funk, chiptune, akustik. `--sira` her çağrıda sıradaki türü seçer, aynı tür art arda gelmez. |
 | `bilgi/` | Fotoğrafsız, yalnız doğrulanmış bilgiden 3 video şablonu: kinetik rakamlar, terminal hikâyesi, veri haritası. |
 | `foto_oyun_montaj.py` | Tek fotoğraf + oyun ekranları: kişi çıkartma olarak, vuruşa göre kesilen 12 sn Reels. |
+| `efektler.emoji()` / `GORUNUMLER` | Renkli emoji (Twemoji, CC BY 4.0: paylaşımda "Twemoji" atfı) ve 6 renk görünümü (sıcak film, teal-turuncu, soğuk temiz, vintage, siyah-beyaz, canlı); şablon ve müzik gibi sırayla dönsün. |
 | HyperFrames | HTML + GSAP → MP4 (HeyGen, Apache-2.0). Kurulum ve CDN tuzağı: `docs/hyperframes.md`. |
 | `bulut/` | Higgsfield sandbox'ında: web oyunundan gerçek oynanış kaydı, faster-whisper ile gerçek kelime zamanlı Türkçe altyazı, edge-tts Türkçe seslendirme. Ayrıntı `bulut/README.md`. |
 | `blender_mockup.py` | Videoyu 3D bir telefonun ekranında oynatan Blender sahnesi ve kamera hareketi (yavaş: kare başına ~6 sn CPU). |

@@ -272,3 +272,36 @@ def bitir(video, cikti, ilerleme=True, dongu=True, renk="0xF7C204"):
     subprocess.run(["ffmpeg", "-y", "-v", "error", "-i", video, "-filter_complex", vf, "-map", "[v]", "-map", "0:a?",
                     "-c:v", "libx264", "-crf", "19", "-pix_fmt", "yuv420p", "-c:a", "copy", cikti], check=True)
     return cikti
+
+
+# ---------------------------------------------------------------- emoji + looks
+EMOJI_ONBELLEK = os.path.expanduser("~/.cache/twemoji")
+
+
+def emoji(karakter, boyut=160):
+    """Emoji as an RGBA numpy array (Twemoji SVG, CC BY 4.0 - credit "Twemoji" when posting).
+
+    Why not a font: the fonts we ship have no colour emoji, and libass draws tofu boxes.
+    Fetched once from GitHub (reachable here) and cached."""
+    import cairosvg, io
+    from PIL import Image
+    kod = "-".join(f"{ord(c):x}" for c in karakter if ord(c) != 0xFE0F)
+    os.makedirs(EMOJI_ONBELLEK, exist_ok=True)
+    svg = os.path.join(EMOJI_ONBELLEK, kod + ".svg")
+    if not os.path.exists(svg):
+        subprocess.run(["curl", "-sSfL", "-o", svg,
+                        f"https://raw.githubusercontent.com/jdecked/twemoji/main/assets/svg/{kod}.svg"], check=True)
+    png = cairosvg.svg2png(url=svg, output_width=boyut, output_height=boyut)
+    return np.asarray(Image.open(io.BytesIO(png)).convert("RGBA"))
+
+
+# Colour looks as ffmpeg filter chains, to rotate between posts like templates and music.
+GORUNUMLER = {
+    "sicak_film": "curves=r='0/0.03 0.5/0.55 1/0.97':b='0/0.06 0.5/0.47 1/0.9',eq=saturation=1.05,noise=alls=6:allf=t",
+    "teal_turuncu": "colorbalance=rs=-0.08:bs=0.1:rh=0.08:bh=-0.08,eq=contrast=1.08:saturation=1.12",
+    "soguk_temiz": "colorbalance=bs=0.05:bm=0.03,eq=contrast=1.05:brightness=0.02:saturation=0.92",
+    "vintage": "curves=preset=vintage,eq=saturation=0.85,vignette=PI/5",
+    "yuksek_kontrast_sb": "hue=s=0,eq=contrast=1.35:brightness=-0.02,unsharp=5:5:0.8",
+    "canli": "eq=contrast=1.1:saturation=1.3,unsharp=3:3:0.5",
+    # cross_process was tried and dropped: it turns skin green.
+}
