@@ -32,3 +32,7 @@ service-account*.json
 !*.pub
 # the recorded demo the README shows is committed on purpose
 !assets/demo.gif
+
+# README tanitim videosu - uretilmis ciktilarin aksine depoda kalir
+!docs/reel/reel.gif
+!docs/reel/reel.mp4
