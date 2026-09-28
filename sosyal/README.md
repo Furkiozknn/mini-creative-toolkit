@@ -12,6 +12,7 @@ OpenCV ve GitHub release'lerinden inen modellerle çalışır (Hugging Face gere
 | `stt.py` | Çevrimdışı konuşma tanıma (Whisper-small, Türkçe dahil) ve yaklaşık kelime zamanları. |
 | `derinlik.py` | Fotoğraftan 2.5B "3D foto" hareketi (Depth-Anything-V2-Small). |
 | `efektler.py` | 5 altyazı stili (hormozi, mrbeast, kutu, pop, sade), yazı kişinin arkasında, renk vurgusu, sentez ses efektleri, müziğin vuruşuna göre foto dizisi, ilerleme çubuğu ve döngülü bitiş. |
+| `bulut/` | Higgsfield sandbox'ında: web oyunundan gerçek oynanış kaydı, faster-whisper ile gerçek kelime zamanlı Türkçe altyazı, edge-tts Türkçe seslendirme. Ayrıntı `bulut/README.md`. |
 | `blender_mockup.py` | Videoyu 3D bir telefonun ekranında oynatan Blender sahnesi ve kamera hareketi (yavaş: kare başına ~6 sn CPU). |
 
 Kurulum: `./kurulum.sh` (Blender için `./kurulum.sh --blender`).
@@ -21,6 +22,6 @@ Araştırma notları `docs/` altında: `viral-rehber.md` (platform kuralları, g
 `teknikler.md` (40 düzenleme tekniği, çok dilli kaynaklar), `github-araclar.md` (açık kaynak araç taraması).
 
 Bilinen sınırlar:
-- `stt.py` Türkçe konuşmada henüz gerçek bir kayıtla denenmedi; kelime zamanları segment içinde uzunluğa göre dağıtılıyor, kareye kesin değil.
+- `stt.py` Türkçe konuşmada henüz gerçek bir kayıtla denenmedi; kelime zamanları segment içinde uzunluğa göre dağıtılıyor, kareye kesin değil. Kesin zaman gerekiyorsa `bulut/altyazi_tr.py`.
 - Yüz takibi yalnız örnek bir portreyle denendi.
 - Fontlar lisans dosyalarıyla birlikte `fonts/` altında (OFL / Apache 2.0).
