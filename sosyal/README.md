@@ -12,6 +12,10 @@ OpenCV ve GitHub release'lerinden inen modellerle çalışır (Hugging Face gere
 | `stt.py` | Çevrimdışı konuşma tanıma (Whisper-small, Türkçe dahil) ve yaklaşık kelime zamanları. |
 | `derinlik.py` | Fotoğraftan 2.5B "3D foto" hareketi (Depth-Anything-V2-Small). |
 | `efektler.py` | 5 altyazı stili (hormozi, mrbeast, kutu, pop, sade), yazı kişinin arkasında, renk vurgusu, sentez ses efektleri, müziğin vuruşuna göre foto dizisi, ilerleme çubuğu ve döngülü bitiş. |
+| `muzik.py` | Gerçek çalgı sesleriyle (GeneralUser GS soundfont) 7 türde tohumlu arka plan müziği: lofi, synthwave, trap, epik, funk, chiptune, akustik. `--sira` her çağrıda sıradaki türü seçer, aynı tür art arda gelmez. |
+| `bilgi/` | Fotoğrafsız, yalnız doğrulanmış bilgiden 3 video şablonu: kinetik rakamlar, terminal hikâyesi, veri haritası. |
+| `foto_oyun_montaj.py` | Tek fotoğraf + oyun ekranları: kişi çıkartma olarak, vuruşa göre kesilen 12 sn Reels. |
+| HyperFrames | HTML + GSAP → MP4 (HeyGen, Apache-2.0). Kurulum ve CDN tuzağı: `docs/hyperframes.md`. |
 | `bulut/` | Higgsfield sandbox'ında: web oyunundan gerçek oynanış kaydı, faster-whisper ile gerçek kelime zamanlı Türkçe altyazı, edge-tts Türkçe seslendirme. Ayrıntı `bulut/README.md`. |
 | `blender_mockup.py` | Videoyu 3D bir telefonun ekranında oynatan Blender sahnesi ve kamera hareketi (yavaş: kare başına ~6 sn CPU). |
 

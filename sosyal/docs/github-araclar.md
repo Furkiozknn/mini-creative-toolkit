@@ -83,3 +83,14 @@
 8. **Vuruş:** `librosa==0.11.0` (kurulumu kolay). Daha isabetli sonuç gerekirse madmom'u git'ten kur (ticari olmayan model lisansı).
 
 **Engelli, elle yükleme gerektiren:** Vosk Türkçe modeli (alphacephei), whisper.cpp ggml ve faster-whisper (HF), openai-whisper .pt (azureedge), beat_this checkpoint (JKU), MediaPipe Tasks modelleri (googleapis). Bu dosyalar kullanıcı tarafından konteynere kopyalanırsa ilgili araçlar da kullanılabilir hale gelir.
+
+---
+
+## Tur 2 (28.09.2026 akşam): ajan becerileri, HyperFrames, müzik çeşitliliği
+
+**Dizin:** [zhuyansen/awesome-claude-video-skills](https://github.com/zhuyansen/awesome-claude-video-skills) (CC0, 180 depo, türe göre ve güvenlik notuyla). Yeni arama yaparken önce buraya bak.
+
+- **HyperFrames** ([heygen-com/hyperframes](https://github.com/heygen-com/hyperframes), Apache-2.0, npm `hyperframes` 0.8.85). **Kuruldu ve denendi:** bu konteynerde 1080×1920 10 sn, 22,4 sn'de render (yerel headless shell, GSAP yerel kopya). Kullanıcının bilgisayarındaki Claude Code'a eklenti olarak da kuruldu. 21 beceri: talking-head-recut, music-to-video, embedded-captions, motion-graphics, product-launch-video…
+- **UI UX Pro Max** ([nextlevelbuilder/ui-ux-pro-max-skill](https://github.com/nextlevelbuilder/ui-ux-pro-max-skill), MIT, 2.13.0). Kullanıcının isteğiyle bilgisayarındaki Claude Code'a eklenti olarak kuruldu. Betikleri yalnız standart kütüphane, ağ çağrısı yok (kaynak okundu); `search.py --design-system` bu konteynerde çalıştı.
+- **Müzik:** [GeneralUser GS](https://github.com/mrbumpy409/GeneralUser-GS) soundfont (v2.0.3, lisans: müzik üretiminde ticari dahil serbest) + `tinysoundfont` 0.3.7 → `muzik.py`. 7 tür üretildi; librosa ile ölçülen tempolar hedefle tutarlı (ör. synthwave 111→112, lofi 80→81, trap 142 yarım zaman 72), parlaklık 1126–2691 Hz aralığında ayrışıyor. Kulakla dinlenmedi.
+- Değerlendirilip kurulmayanlar: `remotion-dev/skills` (Remotion şirket lisansı), `calesthio/OpenMontage` ve `hypit-ai/hypit` (ücretli üretim API'lerine dayanıyor, önce ayrıca incelenmeli), `browser-use/video-use` (MIT; konuşan kafa kurgusu için, ilk gerçek videoda denenecek).
