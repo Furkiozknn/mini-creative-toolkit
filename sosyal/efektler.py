@@ -51,11 +51,14 @@ def w_text(w):
     return w["text"].strip(" ,.!?;:")
 
 
-def altyazi_ass(kelimeler, dosya, stil="hormozi", tur="reels", vurgu_renk=None):
+def altyazi_ass(kelimeler, dosya, stil="hormozi", tur="reels", vurgu_renk=None, y=None, olcek=1.0):
+    """y: top of the caption line in px (default 70 % down the safe box). For a close-up
+    talking head pass a y below the chin; captions over the mouth hide the face."""
     font, boy, ana, kontur, kpx, vurgu, adet, ust = STILLER[stil]
+    boy = int(boy * olcek)
     vurgu = vurgu_renk or vurgu
     x0, y0, x1, y1 = KUTU[tur]
-    y = int(y0 + (y1 - y0) * 0.70)
+    y = int(y0 + (y1 - y0) * 0.70) if y is None else int(y)
     kutu_stil = stil == "kutu"
     border = 3 if kutu_stil else 1
     back = "&H0000C8F7" if kutu_stil else "&H80000000"
