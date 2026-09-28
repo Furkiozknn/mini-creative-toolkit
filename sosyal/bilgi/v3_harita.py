@@ -1,6 +1,7 @@
 from ortak import *
-MUZ = "/home/claude/yercekimi-cevir/assets/audio/muzik_gergin.wav"
-B = 60 / 143.6; T0 = 0.67
+import os
+MUZ = os.environ.get("MUZ", "/home/claude/yercekimi-cevir/assets/audio/muzik_gergin.wav")
+B = 60 / float(os.environ.get("BPM", 143.6)); T0 = float(os.environ.get("T0", 0.67))
 P = np.load("noktalar.npy")
 LON, LAT, IST = P[:, 0], P[:, 1], P[:, 2] > 0
 K = np.cos(np.radians(39.0))

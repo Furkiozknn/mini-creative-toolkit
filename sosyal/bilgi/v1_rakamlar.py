@@ -1,7 +1,8 @@
 from ortak import *
-MUZ = "/home/claude/derin-kazi/assets/audio/muzik_bazalt.wav"
-B = 60 / 161.5; T0 = 0.42
-SEG = 4 * B
+import os
+MUZ = os.environ.get("MUZ", "/home/claude/derin-kazi/assets/audio/muzik_bazalt.wav")
+B = 60 / float(os.environ.get("BPM", 161.5)); T0 = float(os.environ.get("T0", 0.42))
+SEG = float(os.environ.get("SEG_VURUS", 4)) * B
 SAHNE = [  # (number, label, sub)
     (None, None, None),
     (28, "AÇIK KAYNAK DEPO", "hepsi herkese açık"),
@@ -12,7 +13,7 @@ SAHNE = [  # (number, label, sub)
     (0, "BAĞIMLILIK", "mcp-vet: yalnız standart kütüphane"),
     (None, None, None),
 ]
-SURE = T0 + SEG * len(SAHNE)
+SURE = T0 + SEG * len(SAHNE) + 4 * B  # let the end card settle
 rng = np.random.default_rng(3)
 GREN = [rng.integers(0, 18, (H // 4, W // 4), dtype=np.uint8) for _ in range(6)]
 def tr(n): return f"{n:,}".replace(",", ".")
@@ -27,7 +28,7 @@ def arka(t):
 def kare(t):
     img = Image.fromarray(arka(t)); d = ImageDraw.Draw(img)
     i = min(int(max(t - T0, 0) / SEG) if t >= T0 else 0, len(SAHNE) - 1)
-    t0 = T0 + i * SEG if t >= T0 else 0
+    t0 = T0 + i * SEG if t >= T0 else 0  # last scene holds past its slot
     if i == 0:
         yaz(d, "BENİ HİÇ", 760, "Anton-Regular.ttf", 190, KREM, yay(t, 0.05))
         yaz(d, "GÖRMEDİN.", 960, "Anton-Regular.ttf", 190, KREM, yay(t, T0 + B))

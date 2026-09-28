@@ -1,6 +1,7 @@
 from ortak import *
 import wave
-MUZ = "/home/claude/derin-kazi/assets/audio/muzik.wav"
+import os
+MUZ = os.environ.get("MUZ", "/home/claude/derin-kazi/assets/audio/muzik.wav")
 MONO = "JetBrainsMono-Regular.ttf"
 YESIL, GRI, BEYAZ = (120, 220, 140), (130, 130, 140), (235, 235, 235)
 # (command, output lines) ; commands are typed, outputs appear at once
