@@ -1,5 +1,8 @@
 ![mini-creative-toolkit](assets/banner.svg)
 
+<p align="center"><img src="docs/reel/reel.gif" alt="mini-creative-toolkit - 15-second motion reel" width="720"></p>
+<p align="center"><sub><a href="docs/reel/reel.mp4">MP4 version with sound</a></sub></p>
+
 <p align="center">
   <img src="https://img.shields.io/badge/license-MIT-8effc2?style=flat-square" alt="license: MIT">
   <img src="https://img.shields.io/badge/python-3.11%2B-ffd76d?style=flat-square" alt="python 3.11+">
