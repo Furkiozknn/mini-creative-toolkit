@@ -22,6 +22,13 @@ _AV_SUFFIXES = {
 }
 
 
+#: Demuxers whose input is a list of *other* files or URLs that ffmpeg then
+#: opens itself. The allowed-root check only ever sees the path the caller
+#: named, so a playlist inside the root could otherwise make ffmpeg read a
+#: file outside it. None of these is a media file in its own right.
+_REFERENCING_DEMUXERS = {"hls", "applehttp", "dash", "concat", "imf"}
+
+
 def aspect_ratio(width: int, height: int) -> str:
     if width <= 0 or height <= 0:
         return "unknown"
@@ -54,6 +61,14 @@ def classify(path: Path) -> str:
             f"nor ffprobe recognises it.",
             detail=exc.detail,
         ) from None
+    demuxers = set(str(info.get("format", {}).get("format_name", "")).split(","))
+    referencing = demuxers & _REFERENCING_DEMUXERS
+    if referencing:
+        raise InvalidInputError(
+            f"{path.name} is a {'/'.join(sorted(referencing))} playlist or manifest that "
+            f"refers to other files. Pass the media file itself - the allowed-roots "
+            f"check can only vouch for the path it was given."
+        )
     grouped = ffmpeg.streams_by_type(info)
     if grouped.get("video"):
         # A single-frame "video" stream is how ffprobe reports a still image

@@ -18,7 +18,7 @@
     "FFmpeg",
     "CPU-only"
   ],
-  "version": "2.0.0",
+  "version": "2.1.0",
   "license": "MIT",
   "topics": [
     "background-removal",
@@ -36,12 +36,12 @@
     "python",
     "video-processing"
   ],
-  "summary": "23 CPU-first media tools behind one MCP server: background removal, EXIF/GPS stripping, resize, thumbnails, GIFs, video trim. 22 of them report \"network\": \"none\" in their own response payload rather than in a README, and a test fails if any other module ever imports an HTTP client. No GPU, no paid API. 326 tests.",
+  "summary": "23 CPU-first media tools behind one MCP server: background removal, EXIF/GPS stripping, resize, thumbnails, GIFs, video trim. 20 of them report \"network\": \"none\" in their own response payload rather than in a README (remove_background, alone or inside batch_process, fetches its model weights once), and a test fails if any other module ever imports an HTTP client. GPU only for the optional Real-ESRGAN upscaler, no paid API. 363 tests.",
   "key_features": [
     "23 CPU-first media tools behind one MCP server: background removal, EXIF/GPS stripping, resize, thumbnails, GIFs, video trim",
-    "22 of them report \"network\": \"none\" in their own response payload rather than in a README",
+    "20 of them report \"network\": \"none\" in their own response payload rather than in a README (remove_background, alone or inside batch_process, fetches its model weights once)",
     "A test fails if any other module ever imports an HTTP client",
-    "No GPU and no paid API; rembg's CC-BY-NC default model is refused unless you opt in knowingly"
+    "GPU only for the optional Real-ESRGAN upscaler, no paid API; rembg's CC-BY-NC default model is refused unless you opt in knowingly"
   ],
   "media": {
     "hero": "assets/banner.svg",
@@ -52,9 +52,9 @@
     "videos": []
   },
   "tests": {
-    "count": 327,
-    "source": "`327 passed`",
-    "measured": "2026-09-22"
+    "count": 363,
+    "source": "`363 passed`",
+    "measured": "2026-09-25"
   },
   "ci": {
     "workflows": [
@@ -73,7 +73,7 @@
     "license_file": "LICENSE"
   },
   "social": {
-    "headline": "23 media tools that prove they are offline in their own response payload.",
+    "headline": "23 media tools that state their network use in their own response payload.",
     "hashtags": [
       "mcp",
       "ffmpeg",

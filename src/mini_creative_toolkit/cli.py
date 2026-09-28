@@ -292,9 +292,36 @@ def _dispatch(args: argparse.Namespace) -> object:
     raise AssertionError(f"unhandled command {command!r}")  # pragma: no cover
 
 
+def _render_capabilities(result: dict) -> str:
+    """One row per tool, then why anything is blocked. ``--json`` has the rest."""
+    tools = result["tools"]
+    width = max(len(t["tool"]) for t in tools)
+    lines = [f"{'tool':<{width}}  {'ready':<5}  {'network':<14}  {'gpu':<8}  needs"]
+    for t in tools:
+        needs = ", ".join(t["external_binaries"] + [f"{b} (some inputs)" for b in t["conditional_binaries"]])
+        if t["external_service"]:
+            needs = ", ".join(filter(None, [needs, t["external_service"]]))
+        ready = "yes" if t["ready"] else "NO"
+        lines.append(
+            f"{t['tool']:<{width}}  {ready:<5}  {t['network']:<14}  {t['gpu']:<8}  {needs or '-'}"
+        )
+    for t in tools:
+        for reason in t["blockers"]:
+            lines.append(f"  {t['tool']} blocked: {reason}")
+        for reason in t["limitations"]:
+            lines.append(f"  {t['tool']} limited: {reason}")
+    lines.append("")
+    lines.extend(f"note: {note}" for note in result["notes"])
+    lines.append(f"output dir: {result['limits']['MCT_OUTPUT_DIR']}")
+    lines.append("Run with --json for requirements, environment and every limit.")
+    return "\n".join(lines)
+
+
 def _render(result: object, as_json: bool) -> str:
     if as_json or not isinstance(result, dict):
         return json.dumps(result, indent=2, default=str) if not isinstance(result, str) else result
+    if result.get("operation") == "list_capabilities":
+        return _render_capabilities(result)
     lines = []
     if "output_path" in result:
         lines.append(str(result["output_path"]))

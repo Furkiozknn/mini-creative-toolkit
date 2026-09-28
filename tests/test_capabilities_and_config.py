@@ -253,3 +253,34 @@ def test_conditional_binaries_are_declared_separately_from_required_ones():
     thumbnail_cap = CAPABILITIES["video_thumbnail"]
     assert "ffmpeg" in thumbnail_cap.external_binaries
     assert thumbnail_cap.conditional_binaries == ()
+
+
+def _env_after_import(env: dict) -> str:
+    import os
+    import subprocess
+    import sys
+
+    code = (
+        "import mini_creative_toolkit, os, sys;"
+        "assert 'onnxruntime' not in sys.modules or os.environ.get('ORT_DISABLE_TELEMETRY');"
+        "print(os.environ.get('ORT_DISABLE_TELEMETRY'))"
+    )
+    clean = {k: v for k, v in os.environ.items() if k != "ORT_DISABLE_TELEMETRY"}
+    return subprocess.run(
+        [sys.executable, "-c", code], env={**clean, **env},
+        capture_output=True, text=True, check=True,
+    ).stdout.strip()
+
+
+def test_onnxruntime_telemetry_is_off_before_anything_can_import_it():
+    """onnxruntime 1.29's official Linux wheel starts a 1DS telemetry uploader
+    on import: `import onnxruntime` under strace opened HTTPS connections to
+    mobile.events.data.microsoft.com. rembg imports it, and so did
+    list_background_models - a tool that says network: none. The package now
+    sets ORT_DISABLE_TELEMETRY=1 (onnxruntime's documented switch) on import;
+    with it the same strace shows no connection."""
+    assert _env_after_import({}) == "1"
+
+
+def test_an_explicit_telemetry_choice_is_respected():
+    assert _env_after_import({"ORT_DISABLE_TELEMETRY": "0"}) == "0"

@@ -193,6 +193,26 @@ def test_auto_falls_back_to_lanczos_when_fsrcnn_has_no_model_for_the_scale(confi
     assert (result["actual_width"], result["actual_height"]) == (80, 80)
 
 
+def test_auto_never_routes_a_scale_upscayl_cannot_do_to_real_esrgan(monkeypatch, config, tmp_path):
+    """With Upscayl configured and a GPU present, x5-x8 used to be sent to
+    Upscayl, whose models exist only for x2/x3/x4 - so a scale this tool
+    accepts failed. Reaching Upscayl at all fails this test."""
+    binary = tmp_path / "upscayl-bin"
+    binary.write_text("#!/bin/sh\nexit 1\n")
+    models = tmp_path / "models"
+    models.mkdir()
+    cfg = Config(output_dir=config.output_dir, upscayl_bin=binary, upscayl_models=models)
+    monkeypatch.setenv("MCT_FORCE_GPU", "1")
+    assert choose_upscale_method(5, cfg)[0] == "real-esrgan"  # the raw preference
+
+    source = tmp_path / "small.png"
+    Image.new("RGB", (16, 16), (3, 3, 3)).save(source)
+    result = upscale_image_auto(str(source), 5, config=cfg)
+    assert result["selected_method"] == "lanczos"
+    assert "x5 version" in result["selection_reason"]
+    assert (result["actual_width"], result["actual_height"]) == (80, 80)
+
+
 def test_upscaling_respects_the_output_pixel_budget(config, tmp_path):
     """The budget is checked against the *output* size, not just the input -
     a 4x upscale of a large image is where this actually bites."""

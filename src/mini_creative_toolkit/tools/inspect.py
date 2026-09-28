@@ -34,10 +34,11 @@ def list_capabilities(config: Config | None = None) -> dict:
         "environment": env,
         "limits": config.limits_dict(),
         "notes": [
-            "Exactly one tool (generate_image_free) makes a network request. Every "
-            "other tool runs entirely on this machine.",
-            "remove_background is listed as network 'first-run-only' because rembg "
-            "downloads model weights the first time a given model is used.",
+            "Exactly one tool (generate_image_free) sends your data over the network. "
+            "Every other tool runs entirely on this machine.",
+            "remove_background (and batch_process when it runs remove_background) is "
+            "listed as network 'first-run-only' because rembg downloads model weights "
+            "the first time a given model is used.",
             "This server is not a sandbox. It reads and writes files with the "
             "permissions of the user running it - see SECURITY.md.",
         ],

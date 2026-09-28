@@ -44,12 +44,13 @@ def resize_image(
     width = require_positive_int(width, "width", maximum=100_000)
     height = require_positive_int(height, "height", maximum=100_000)
 
+    src_w, src_h, _ = images.header_size(source)
+    images.check_pixel_budget(src_w, src_h, source, config)
+    target = images.fit_within((src_w, src_h), width, height) if keep_aspect else (width, height)
+    images.check_output_pixels(*target, "The resized image", config)
+
     with images.open_image(source, config) as opened:
         original_size = opened.size
-        if keep_aspect:
-            target = images.fit_within(original_size, width, height)
-        else:
-            target = (width, height)
         resized = opened.convert(opened.mode).resize(target, Image.LANCZOS)
         fmt = images.canonical_format(source.suffix or "png")
         if fmt not in ("PNG", "JPEG", "WEBP", "AVIF"):
@@ -313,9 +314,9 @@ def create_contact_sheet(
     rows = (len(thumbs) + columns - 1) // columns
     cell_w = thumbnail_size + padding
     cell_h = thumbnail_size + padding + label_height
-    sheet = Image.new(
-        "RGB", (columns * cell_w + padding, rows * cell_h + padding), rgb_background
-    )
+    sheet_size = (columns * cell_w + padding, rows * cell_h + padding)
+    images.check_output_pixels(*sheet_size, "The contact sheet", config)
+    sheet = Image.new("RGB", sheet_size, rgb_background)
     draw = ImageDraw.Draw(sheet)
 
     for index, (thumb, name) in enumerate(thumbs):

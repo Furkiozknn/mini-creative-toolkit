@@ -18,6 +18,7 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Callable
 
+from ..capabilities import CAPABILITIES
 from ..config import Config, get_config
 from ..errors import InvalidInputError, ResourceLimitError, ToolkitError
 from ..log import get_logger
@@ -40,6 +41,19 @@ OPERATIONS: dict[str, tuple[Callable, bool, tuple[str, ...]]] = {
     "remove_background": (remove_background, True, ()),
     "optimize": (optimize_media, False, ()),
     "upscale_fast": (upscale_image_fast, True, ()),
+}
+
+#: batch operation name -> the tool whose capability entry describes it. The
+#: batch payload reports *that* tool's network need: a remove_background batch
+#: can download model weights exactly like a single remove_background call.
+OPERATION_TOOLS: dict[str, str] = {
+    "resize": "resize_image",
+    "convert_format": "convert_format",
+    "strip_metadata": "strip_metadata",
+    "watermark": "add_watermark",
+    "remove_background": "remove_background",
+    "optimize": "optimize_media",
+    "upscale_fast": "upscale_image_fast",
 }
 
 
@@ -132,7 +146,7 @@ def batch_process(
     return {
         "operation": "batch_process",
         "execution": "local",
-        "network": "none",
+        "network": CAPABILITIES[OPERATION_TOOLS[operation]].network.value,
         "batch_operation": operation,
         "total": len(outcomes),
         "succeeded": len(succeeded),

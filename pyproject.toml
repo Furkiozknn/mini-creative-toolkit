@@ -1,6 +1,6 @@
 [project]
 name = "mini-creative-toolkit"
-version = "2.0.0"
+version = "2.1.0"
 description = "Local media operations for MCP clients - images, video and audio. CPU-first, no paid APIs, external network access isolated and documented."
 readme = "README.md"
 license = "MIT"
@@ -54,6 +54,10 @@ Issues = "https://github.com/Furkiozknn/mini-creative-toolkit/issues"
 
 [project.scripts]
 mct = "mini_creative_toolkit.cli:main"
+# What `uvx mini-creative-toolkit` runs - the command server.json gives MCP
+# clients. uvx looks for a script named like the package; without this one the
+# registry entry installs and then fails with "executable not provided".
+mini-creative-toolkit = "mini_creative_toolkit.server:main"
 
 [dependency-groups]
 dev = ["pytest>=8.0.0"]

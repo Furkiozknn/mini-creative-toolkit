@@ -185,3 +185,44 @@ def test_ffmpeg_failures_keep_the_log_out_of_the_message(config, tmp_path):
     error = excinfo.value
     if hasattr(error, "message"):
         assert len(error.message) < 400
+
+
+# --- Inputs that make ffmpeg open *other* files -----------------------------
+
+
+def _playlist_pointing_outside(tmp_path, video):
+    """An HLS playlist inside the allowed root whose only segment lives outside it."""
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    segment = outside / "private.ts"
+    subprocess.run(
+        ["ffmpeg", "-y", "-loglevel", "error", "-i", str(video), "-c", "copy",
+         "-f", "mpegts", str(segment)],
+        capture_output=True, check=True,
+    )
+    work = tmp_path / "work"
+    work.mkdir()
+    playlist = work / "list.m3u8"
+    playlist.write_text(
+        "#EXTM3U\n#EXT-X-TARGETDURATION:3\n#EXTINF:3,\n"
+        f"{segment}\n#EXT-X-ENDLIST\n",
+        encoding="utf-8",
+    )
+    return playlist, work
+
+
+@needs_ffmpeg
+def test_a_playlist_cannot_pull_a_file_from_outside_the_allowed_roots(tmp_path, video):
+    """``MCT_ALLOWED_ROOTS`` checks the path the caller names. An HLS playlist
+    is a file that names *other* files, and ffmpeg follows them - so a
+    playlist planted inside the root used to hand a frame of a video outside
+    it straight back to the caller."""
+    from mini_creative_toolkit.config import Config
+
+    playlist, work = _playlist_pointing_outside(tmp_path, video)
+    config = Config(output_dir=work / "out", allowed_roots=(work.resolve(),))
+    with pytest.raises(InvalidInputError, match="hls"):
+        describe(playlist, config)
+    with pytest.raises(InvalidInputError, match="refer"):
+        video_thumbnail(str(playlist), "00:00:01", config=config)
+    assert not (work / "out").exists() or list((work / "out").iterdir()) == []
