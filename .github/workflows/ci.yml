@@ -151,6 +151,35 @@ jobs:
           leftovers=$(find output -name '*.part-*' -o -name 'tmp-*' 2>/dev/null || true)
           test -z "$leftovers" || { echo "leftover temporary files: $leftovers"; exit 1; }
 
+  # pyproject.toml says "OS Independent". Until this job existed the suite had
+  # only ever run on Linux, and on Windows 10 tests failed for reasons that
+  # were about the tests (a child process without SYSTEMROOT cannot load
+  # Winsock; file names with quotes and pipes do not exist there), not about
+  # the toolkit. This keeps them fixed.
+  windows:
+    runs-on: windows-latest
+    env:
+      UV_PYTHON: "3.12"
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+
+      - name: Install ffmpeg
+        run: choco install ffmpeg -y --no-progress
+
+      - name: Verify ffmpeg is available
+        run: |
+          ffmpeg -version
+          ffprobe -version
+
+      - name: Install dependencies
+        run: uv sync
+
+      - name: Run tests
+        run: uv run pytest -v
+
   # `yayinla.yml` yalniz `v*` etiketinde kosuyor, yani paketleme bozulursa
   # bunu ancak yayinlamaya calistigin an ogrenirsin. Kardes depo mcp-vet'te
   # tam olarak bu oldu: 244 test yesilken `uv build` calismiyordu, cunku

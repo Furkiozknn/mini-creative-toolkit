@@ -47,14 +47,14 @@
     "hero": "assets/banner.svg",
     "screenshots": [],
     "gifs": [
-      "assets/demo.gif"
+      "docs/demo/demo.gif"
     ],
     "videos": []
   },
   "tests": {
-    "count": 327,
-    "source": "`327 passed`",
-    "measured": "2026-09-22"
+    "count": 347,
+    "source": "`347 passed`",
+    "measured": "2026-09-30"
   },
   "ci": {
     "workflows": [

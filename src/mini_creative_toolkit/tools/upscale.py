@@ -63,7 +63,7 @@ def upscale_image_fast(
         )
 
     width, height, _ = images.header_size(source)
-    images.check_pixel_budget(width * scale, height * scale, source, config)
+    images.check_pixel_budget(width * scale, height * scale, source, config, f"upscaling x{scale}")
 
     destination = manager.resolve_explicit(output_path, overwrite) if output_path else None
     with manager.stage("upscaled-fast", "png", destination) as staged:
@@ -92,7 +92,7 @@ def upscale_image(
     model = require_name(model, "model")
 
     width, height, _ = images.header_size(source)
-    images.check_pixel_budget(width * scale, height * scale, source, config)
+    images.check_pixel_budget(width * scale, height * scale, source, config, f"upscaling x{scale}")
 
     destination = manager.resolve_explicit(output_path, overwrite) if output_path else None
     with manager.stage("upscaled", "png", destination) as staged:
@@ -185,7 +185,7 @@ def upscale_image_auto(
 def _lanczos_upscale(source, scale, manager, output_path, overwrite, config):
     with images.open_image(source, config) as opened:
         width, height = opened.size
-        images.check_pixel_budget(width * scale, height * scale, source, config)
+        images.check_pixel_budget(width * scale, height * scale, source, config, f"upscaling x{scale}")
         enlarged = opened.convert(opened.mode).resize(
             (width * scale, height * scale), Image.LANCZOS
         )

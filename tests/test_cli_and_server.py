@@ -10,6 +10,7 @@ import re
 import subprocess
 import sys
 import threading
+import time
 from pathlib import Path
 
 import pytest
@@ -18,6 +19,8 @@ from PIL import Image
 from mini_creative_toolkit.capabilities import CAPABILITIES
 from mini_creative_toolkit.cli import build_parser, main
 from mini_creative_toolkit.server import describe, mcp
+
+from helpers import child_env
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
@@ -75,14 +78,13 @@ class _StdioClient:
     """
 
     def __init__(self, tmp_path: Path, env_extra: dict | None = None) -> None:
-        env = {
-            "PATH": os.environ.get("PATH", "/usr/bin:/bin"),
-            "HOME": str(tmp_path),
-            "MCT_OUTPUT_DIR": str(tmp_path / "out"),
-            "PYTHONPATH": str(REPO_ROOT / "src"),
-            "PYTHONUNBUFFERED": "1",
-        }
-        env.update(env_extra or {})
+        env = child_env(
+            tmp_path,
+            MCT_OUTPUT_DIR=str(tmp_path / "out"),
+            PYTHONPATH=str(REPO_ROOT / "src"),
+            PYTHONUNBUFFERED="1",
+            **(env_extra or {}),
+        )
         self.proc = subprocess.Popen(
             [sys.executable, "-m", "mini_creative_toolkit"],
             stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
@@ -102,8 +104,21 @@ class _StdioClient:
         self.proc.stdin.flush()
 
     def read(self, timeout: float = 90.0) -> dict:
+        deadline = time.monotonic() + timeout
         while True:
-            line = self._lines.get(timeout=timeout)
+            # Poll, so a server that died at startup fails the test at once with
+            # its own stderr instead of after the full timeout.
+            try:
+                line = self._lines.get(timeout=0.5)
+            except queue.Empty:
+                if self.proc.poll() is not None and self._lines.empty():
+                    raise AssertionError(
+                        f"server exited with code {self.proc.returncode} before answering: "
+                        + (self.proc.stderr.read() if self.proc.stderr else "")[-1500:]
+                    )
+                if time.monotonic() > deadline:
+                    raise
+                continue
             if line.strip():
                 return json.loads(line)
 
@@ -133,7 +148,11 @@ def test_the_server_starts_and_speaks_the_protocol(tmp_path):
     """A real stdio handshake, not a mock: this is what an MCP client does."""
     client = _StdioClient(tmp_path)
     try:
-        assert "result" in client.initialize()
+        reply = client.initialize()
+        assert "result" in reply
+        # Clients and registries show this; it used to be an empty string.
+        from mini_creative_toolkit import __version__
+        assert reply["result"]["serverInfo"]["version"] == __version__
         client.send({"jsonrpc": "2.0", "id": 2, "method": "tools/list"})
         listing = client.read()
         names = {t["name"] for t in listing["result"]["tools"]}
@@ -195,10 +214,9 @@ def test_logs_go_to_stderr_so_they_cannot_corrupt_the_protocol_stream(tmp_path):
         [sys.executable, "-m", "mini_creative_toolkit"],
         input="", capture_output=True, text=True, timeout=60,
         cwd=REPO_ROOT,
-        env={"PATH": "/usr/bin:/bin", "HOME": str(tmp_path),
-             "MCT_LOG_LEVEL": "verbose",
-             "MCT_OUTPUT_DIR": str(tmp_path / "out"),
-             "PYTHONPATH": str(REPO_ROOT / "src")},
+        env=child_env(tmp_path, MCT_LOG_LEVEL="verbose",
+                      MCT_OUTPUT_DIR=str(tmp_path / "out"),
+                      PYTHONPATH=str(REPO_ROOT / "src")),
     )
     for line in proc.stdout.splitlines():
         if line.strip():
@@ -212,9 +230,8 @@ def test_the_legacy_launcher_still_works(tmp_path):
         [sys.executable, str(REPO_ROOT / "toolkit.py")],
         input="", capture_output=True, text=True, timeout=60,
         cwd=tmp_path,
-        env={"PATH": "/usr/bin:/bin", "HOME": str(tmp_path),
-             "MCT_OUTPUT_DIR": str(tmp_path / "out"),
-             "PYTHONPATH": str(REPO_ROOT / "src")},
+        env=child_env(tmp_path, MCT_OUTPUT_DIR=str(tmp_path / "out"),
+                      PYTHONPATH=str(REPO_ROOT / "src")),
     )
     assert proc.returncode == 0, proc.stderr[-2000:]
 
@@ -295,8 +312,10 @@ def test_cli_verbose_surfaces_the_detail_that_normal_mode_hides(tmp_path, capsys
 
 
 def test_the_installed_console_script_exists():
-    script = REPO_ROOT / ".venv" / "bin" / "mct"
-    if not script.exists():
+    # .venv/bin on POSIX, .venv/Scripts (with .exe) on Windows
+    candidates = [REPO_ROOT / ".venv" / "bin" / "mct", REPO_ROOT / ".venv" / "Scripts" / "mct.exe"]
+    script = next((c for c in candidates if c.exists()), None)
+    if script is None:
         pytest.skip("the package is not installed in a local .venv")
     proc = subprocess.run([str(script), "--version"], capture_output=True, text=True, timeout=60)
     assert proc.returncode == 0
@@ -413,3 +432,124 @@ def test_every_subcommand_accepts_the_global_flags_after_it():
         for name, sub in action.choices.items():
             options = {opt for a in sub._actions for opt in a.option_strings}
             assert {"--json", "--log-level", "--output-dir"} <= options, name
+
+
+# --- first-run experience: help, readable listings, wildcards ----------------
+
+def test_top_level_help_leads_with_first_steps_and_the_exit_codes(capsys):
+    with pytest.raises(SystemExit) as excinfo:
+        main(["--help"])
+    assert excinfo.value.code == 0
+    out = capsys.readouterr().out
+    assert "first steps:" in out
+    assert "mct inspect photo.jpg" in out
+    assert "Exit codes: 0 done, 1 the operation failed" in out
+    assert "Only 'generate' sends your data" in out
+
+
+def test_no_command_prints_the_same_first_steps_and_exits_2(capsys):
+    assert main([]) == 2
+    assert "first steps:" in capsys.readouterr().out
+
+
+def test_every_argument_of_every_subcommand_has_help_text():
+    """`mct resize --help` used to list `--width WIDTH` with no words at all."""
+    parser = build_parser()
+    missing = []
+    for action in parser._subparsers._group_actions:  # type: ignore[union-attr]
+        for name, sub in action.choices.items():
+            for a in sub._actions:
+                if a.help is None and a.dest not in ("help",):
+                    missing.append(f"{name}: {a.dest}")
+    assert missing == []
+
+
+def test_capabilities_text_is_a_table_not_one_giant_json_line(capsys):
+    assert main(["capabilities"]) == 0
+    out = capsys.readouterr().out
+    assert "23 tools: 22 local, 1 hosted" in out
+    assert '{"tool"' not in out
+    row = next(line for line in out.splitlines() if line.strip().startswith("resize_image"))
+    assert "yes" in row and "none" in row
+    assert max(len(line) for line in out.splitlines()) < 200
+
+
+def test_models_and_presets_text_are_tables(capsys):
+    assert main(["presets"]) == 0
+    out = capsys.readouterr().out
+    assert "image  square" in out and "1080x1080" in out
+    assert "{" not in out
+    assert main(["models"]) == 0
+    out = capsys.readouterr().out
+    assert "default model: u2net" in out
+    assert "bria-rmbg" in out and "CC BY-NC" in out
+    assert "{" not in out
+
+
+def test_json_output_of_the_listings_is_unchanged_by_the_text_tables(capsys):
+    assert main(["capabilities", "--json"]) == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert len(payload["tools"]) == 23 and "environment" in payload
+
+
+def test_compare_prints_one_fact_per_line(tmp_path, capsys):
+    a = tmp_path / "a.png"
+    Image.new("RGB", (30, 20), (1, 2, 3)).save(a)
+    assert main(["compare", str(a), str(a)]) == 0
+    out = capsys.readouterr().out
+    assert "  image_a:" in out and "    sha256: " in out
+    assert '{"path"' not in out
+
+
+def _pngs(folder: Path, *names: str) -> None:
+    for name in names:
+        Image.new("RGB", (16, 16), (9, 9, 9)).save(folder / name)
+
+
+def test_batch_expands_a_wildcard_the_shell_left_alone(tmp_path, capsys):
+    """cmd.exe and PowerShell pass `*.png` through literally."""
+    _pngs(tmp_path, "one.png", "two.png", "three.png")
+    code = main(["--output-dir", str(tmp_path / "out"), "batch", str(tmp_path / "t*.png"),
+                 "--operation", "strip_metadata", "--json"])
+    assert code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["total"] == 2 and payload["succeeded"] == 2
+
+
+def test_a_wildcard_that_matches_nothing_says_so(tmp_path, capsys):
+    code = main(["--output-dir", str(tmp_path / "out"), "batch", str(tmp_path / "nope*.png"),
+                 "--operation", "strip_metadata"])
+    assert code == 1
+    assert "no file matches" in capsys.readouterr().err
+
+
+def test_a_file_whose_name_looks_like_a_pattern_is_still_found(tmp_path, capsys):
+    from mini_creative_toolkit.cli import _expand
+
+    literal = tmp_path / "shot[1].png"
+    Image.new("RGB", (8, 8), (1, 1, 1)).save(literal)
+    assert _expand([str(literal)]) == [str(literal)]
+
+
+def test_contact_sheet_expands_wildcards_too(tmp_path, capsys):
+    _pngs(tmp_path, "a1.png", "a2.png")
+    assert main(["--output-dir", str(tmp_path / "out"), "contact-sheet",
+                 str(tmp_path / "a*.png"), "--json"]) == 0
+    assert json.loads(capsys.readouterr().out)["tiled"] == 2
+
+
+def test_batch_refuses_a_single_output_path(tmp_path, capsys):
+    """One destination cannot hold many results. It used to be accepted and
+    silently ignored."""
+    _pngs(tmp_path, "a.png")
+    with pytest.raises(SystemExit) as excinfo:
+        main(["batch", str(tmp_path / "a.png"), "--operation", "strip_metadata", "-o", "x.png"])
+    assert excinfo.value.code == 2
+    assert "unrecognized arguments" in capsys.readouterr().err
+
+
+def test_a_bad_options_string_shows_a_working_example(tmp_path):
+    with pytest.raises(SystemExit) as excinfo:
+        main(["batch", str(tmp_path / "a.png"), "--operation", "optimize", "--options", "{bad"])
+    assert "--options must be a JSON object" in str(excinfo.value)
+    assert "example:" in str(excinfo.value)

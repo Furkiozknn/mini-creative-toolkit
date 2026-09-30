@@ -100,12 +100,18 @@ def header_size(path: Path) -> tuple[int, int, str]:
         raise InvalidInputError(f"Could not read {path.name} as an image: {exc}") from None
 
 
-def check_pixel_budget(width: int, height: int, path: Path, config: Config | None = None) -> None:
+def check_pixel_budget(
+    width: int, height: int, path: Path, config: Config | None = None, result_of: str | None = None,
+) -> None:
+    """``result_of`` names an operation when the size being checked is its output
+    rather than the file itself ("upscaling x7"), so the message does not claim
+    the input file is that large."""
     config = config or get_config()
     pixels = width * height
     if pixels > config.max_image_pixels:
+        subject = f"{result_of} {path.name} would produce" if result_of else f"{path.name} is"
         raise ResourceLimitError(
-            f"{path.name} is {width}x{height} = {pixels:,} pixels, above the "
+            f"{subject} {width}x{height} = {pixels:,} pixels, above the "
             f"{config.max_image_pixels:,} pixel limit. Decoding it would allocate "
             f"roughly {pixels * 4 / 1024 / 1024:.0f} MB. Raise MCT_MAX_IMAGE_PIXELS "
             f"if this file is legitimate.",
