@@ -1,0 +1,44 @@
+# mini-creative-toolkit terminal demo: real commands, real output
+# tarih: 2026-09-30T03:58:41+03:00
+# surum: 2.0.0 (uv sync ile kuruldu, ortamdaki mct)
+# photo.jpg: scripts/demo-uret.py make_photo() ile uretilen SENTETIK resim (EXIF + GPS etiketli), gercek fotograf degil
+# her komut bash -c 'set -o pipefail; ...' ile bos bir klasorde kosuldu; hicbir cikti satiri elle yazilmadi
+# '~' = o gecici klasorun yolu (okunabilirlik icin yer degistirildi)
+
+$ mct --version
+mct 2.0.0
+[cikis kodu 0] (1.27 s)
+
+$ mct inspect photo.jpg | grep -E "format|width|height|has_exif|network"
+  network: none
+  format: JPEG
+  width: 1600
+  height: 1200
+  has_exif: True
+[cikis kodu 0] (1.22 s)
+
+$ mct strip-metadata photo.jpg -o clean.jpg
+~\clean.jpg
+  output_size_bytes: 226005
+  execution: local
+  network: none
+  input: ~\photo.jpg
+  removed_exif: True
+  removed_icc_profile: False
+  removed_other_keys: dpi, jfif, jfif_density, jfif_unit, jfif_version
+  format: JPEG
+[cikis kodu 0] (1.13 s)
+
+$ mct inspect clean.jpg | grep -E "has_exif|network"
+  network: none
+  has_exif: False
+[cikis kodu 0] (1.16 s)
+
+$ python mcp_probe.py photo.jpg
+initialize  -> mini-creative-toolkit 2.0.0 (protocol 2025-06-18)
+tools/list  -> 23 tools, 22 local, 1 hosted (generate_image_free)
+descriptions -> longest 743 chars, 0 with invisible characters
+inspect_media   -> JPEG 1600x1200 has_exif=True  execution=local network=none
+strip_metadata  -> removed_exif=True  execution=local network=none
+inspect_media   -> has_exif=False  execution=local network=none
+[cikis kodu 0] (3.30 s)

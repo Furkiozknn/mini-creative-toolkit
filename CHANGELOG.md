@@ -16,12 +16,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `scripts/mcp_probe.py`: starts the server over stdio and speaks to it like a
+  client (`initialize`, `tools/list`, three real `tools/call` requests), and
+  checks every tool description for invisible characters.
+- `scripts/demo-uret.py`: regenerates the README terminal demo from real
+  command output (`docs/demo/komutlar.txt` is the record).
+- The MCP `initialize` reply now carries the package version
+  (`serverInfo.version` was an empty string).
+- `mct --help` opens with first steps and the exit codes, and every argument of
+  every subcommand has help text.
+- `mct capabilities`, `mct models` and `mct presets` print tables instead of one
+  JSON blob per key; nested results (`compare`, `batch`) print one fact per line.
+  `--json` is unchanged.
+- `mct batch` and `mct contact-sheet` expand wildcards themselves, so
+  `mct batch photos\*.jpg` works in cmd.exe and PowerShell.
 - Model reuse across calls: `rembg` sessions are cached per model name and
   FSRCNN networks per scale, for the life of the process. `MCT_CACHE_MODELS=0`
   opts out on a host that cannot spare the memory.
 
 ### Fixed
 
+- `mct batch` no longer accepts and silently ignores `-o`; one path cannot hold
+  many results, so it is now a usage error (exit 2).
+- `mct thumbnail --at` past the end of the video says how long the video is
+  instead of "reported success but wrote no output".
+- The pixel-budget error for an upscale names the upscale ("upscaling x7 photo.jpg
+  would produce ...") instead of claiming the input file is that large.
+- The test suite runs on Windows: child processes keep `SYSTEMROOT` (without it
+  Winsock cannot load and the server never answers), a server that dies at
+  startup fails the test at once with its stderr, and POSIX-only file names and
+  paths are skipped or replaced. 10 tests failed there before.
 - The default output directory no longer assumes a source checkout. Installed
   non-editably, `output/` is resolved under the current working directory
   instead of inside the interpreter's own tree.
