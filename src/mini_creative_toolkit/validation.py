@@ -49,6 +49,14 @@ def require_timestamp(value: object, field: str = "timestamp") -> str:
     return candidate
 
 
+def timestamp_seconds(stamp: str) -> float:
+    """Seconds in a string ``require_timestamp`` already accepted."""
+    seconds = 0.0
+    for part in stamp.split(":"):
+        seconds = seconds * 60 + float(part)
+    return seconds
+
+
 def require_positive_number(value: object, field: str, maximum: float | None = None) -> float:
     if isinstance(value, bool) or not isinstance(value, (int, float)):
         raise InvalidInputError(f"{field} must be a number, got {type(value).__name__}")

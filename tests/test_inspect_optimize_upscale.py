@@ -213,3 +213,15 @@ def test_upscale_image_without_upscayl_fails_only_that_tool(config, png):
     assert "UPSCAYL_BIN_PATH" in excinfo.value.message
     assert "upscale_image_fast" in excinfo.value.message
     assert upscale_image_fast(str(png), 2)["output_path"]
+
+
+def test_the_budget_message_blames_the_upscale_not_the_input(config, tmp_path):
+    """"photo.jpg is 11200x8400" told people their small file was huge."""
+    source = tmp_path / "small.png"
+    Image.new("RGB", (20, 20), (1, 1, 1)).save(source)
+    tight = Config(output_dir=config.output_dir, max_image_pixels=1000)
+    with pytest.raises(ResourceLimitError) as excinfo:
+        upscale_image_fast(str(source), 4, config=tight)
+    message = excinfo.value.message
+    assert "upscaling x4 small.png would produce 80x80" in message
+    assert "small.png is 80x80" not in message

@@ -137,7 +137,7 @@ CAPABILITIES: dict[str, ToolCapability] = {
         ),
         _cap(
             "upscale_image_fast",
-            "FSRCNN super-resolution (OpenCV dnn_superres), CPU, sub-second.",
+            "FSRCNN super-resolution (OpenCV dnn_superres), CPU: sub-second for icons, seconds for a photo.",
             model="FSRCNN x2/x3/x4 (bundled)",
         ),
         _cap(

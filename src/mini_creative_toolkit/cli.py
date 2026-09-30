@@ -14,13 +14,15 @@ one that errors.
 from __future__ import annotations
 
 import argparse
+import glob
 import json
 import sys
+from pathlib import Path
 from typing import Sequence
 
 from . import __version__
 from .config import Config, get_config, set_config
-from .errors import ToolkitError
+from .errors import InvalidInputError, ToolkitError
 from .log import configure, get_logger
 from .tools import background as background_tools
 from .tools import batch as batch_tools
@@ -37,6 +39,59 @@ logger = get_logger(__name__)
 EXIT_OK = 0
 EXIT_TOOL_ERROR = 1
 EXIT_USAGE = 2
+
+EPILOG = """\
+first steps:
+  mct inspect photo.jpg                 what the file really is (never modifies it)
+  mct strip-metadata photo.jpg          drop EXIF/GPS; writes a new file, lists what went
+  mct optimize photo.jpg --goal web     smaller file, every trade-off reported
+  mct capabilities                      what this machine can and cannot run
+  mct serve                             start the MCP server on stdio
+
+Results are written to MCT_OUTPUT_DIR (default ./output) or to -o PATH; an
+input is never changed. Add --json for the structured result.
+Every command prints "execution" and "network". Only 'generate' sends your data
+out; 'remove-bg' downloads a model's weights the first time that model is used.
+Exit codes: 0 done, 1 the operation failed (reason on stderr), 2 usage error.
+"""
+
+#: Help for arguments that would otherwise show a bare name in `mct <cmd> --help`.
+#: Applied only where a command did not write its own help text.
+_ARG_HELP = {
+    "path": "file to read (never modified)",
+    "paths": "files to read; wildcards such as *.jpg work on every shell",
+    "image_a": "first image",
+    "image_b": "second image",
+    "width": "width in pixels",
+    "height": "height in pixels",
+    "start": "start time: HH:MM:SS, MM:SS or seconds",
+    "duration": "length in seconds",
+    "timestamp": "moment to grab: HH:MM:SS, MM:SS or seconds",
+    "crf": "H.264 quality: lower means better quality and a larger file",
+    "fps": "frames per second",
+    "quality": "1-100, for lossy formats",
+    "text": "the text to draw",
+    "opacity": "0 (invisible) to 1 (solid)",
+    "font_size": "size in points",
+    "scale": "enlargement factor: 2, 3 or 4 use the FSRCNN model",
+    "model": "model name (see 'mct models')",
+    "prompt": "text prompt; it is sent to a third party",
+    "seed": "fixed seed for a repeatable result",
+    "loop": "GIF loops (0 = forever)",
+    "columns": "tiles per row",
+    "padding": "pixels between tiles",
+    "thumbnail_size": "tile size in pixels",
+    "concurrency": "workers (bounded by MCT_BATCH_CONCURRENCY)",
+    "preset": "encoder speed preset (ultrafast ... veryslow)",
+    "lossless": "lossless encoding (webp and avif only)",
+    "goal": "what to optimise for: web, social, smallest, quality or archive",
+    "max_width": "fit within this width",
+    "max_height": "fit within this height",
+    "position": "where to draw the text",
+    "audio_format": "mp3 or wav",
+    "no_labels": "leave file names off the tiles",
+    "operation": "what to do to every file: " + ", ".join(sorted(batch_tools.OPERATIONS)),
+}
 
 
 class _Parser(argparse.ArgumentParser):
@@ -107,6 +162,8 @@ def build_parser() -> argparse.ArgumentParser:
         allow_abbrev=False,
         parents=[_global_flags(suppress=False)],
     )
+    parser.epilog = EPILOG
+    parser.formatter_class = argparse.RawDescriptionHelpFormatter
     parser.add_argument("--version", action="version", version=f"mct {__version__}")
     sub = parser.add_subparsers(dest="command", metavar="command")
 
@@ -199,7 +256,8 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("image_a")
     p.add_argument("image_b")
 
-    p = _add(sub, "batch", "Apply one operation to many files.")
+    # No -o here: one destination cannot hold many results (use --output-dir).
+    p = _sub(sub, "batch", "Apply one operation to many files (results go to --output-dir).")
     p.add_argument("paths", nargs="+")
     p.add_argument("--operation", required=True, choices=sorted(batch_tools.OPERATIONS))
     p.add_argument("--options", default="{}", help="JSON object of operation arguments")
@@ -216,7 +274,32 @@ def build_parser() -> argparse.ArgumentParser:
     _sub(sub, "models", "List background-removal models and their licences.")
     _sub(sub, "serve", "Start the MCP server on stdio.")
 
+    for choice in sub.choices.values():
+        for action in choice._actions:
+            if action.help is None and action.dest in _ARG_HELP:
+                action.help = _ARG_HELP[action.dest]
     return parser
+
+
+def _expand(patterns: Sequence[str]) -> list[str]:
+    """Expand wildcards the shell did not.
+
+    POSIX shells expand ``*.jpg`` before mct starts; cmd.exe and PowerShell
+    hand it over literally, and the operation then failed with a localised
+    Windows error about a bad file name. A pattern is only expanded when no
+    file of that literal name exists, so a file really called ``a[1].png`` is
+    still found.
+    """
+    expanded: list[str] = []
+    for raw in patterns:
+        if any(ch in raw for ch in "*?[") and not Path(raw).exists():
+            hits = sorted(h for h in glob.glob(raw) if Path(h).is_file())
+            if not hits:
+                raise InvalidInputError(f"no file matches {raw!r}")
+            expanded.extend(hits)
+        else:
+            expanded.append(raw)
+    return expanded
 
 
 def _dispatch(args: argparse.Namespace) -> object:
@@ -274,7 +357,7 @@ def _dispatch(args: argparse.Namespace) -> object:
         return video_tools.extract_audio(args.path, args.audio_format, out, ow)
     if command == "contact-sheet":
         return image_tools.create_contact_sheet(
-            args.paths, args.thumbnail_size, args.columns, args.padding,
+            _expand(args.paths), args.thumbnail_size, args.columns, args.padding,
             not args.no_labels, "white", out, ow,
         )
     if command == "compare":
@@ -283,8 +366,12 @@ def _dispatch(args: argparse.Namespace) -> object:
         try:
             options = json.loads(args.options)
         except json.JSONDecodeError as exc:
-            raise SystemExit(f"mct: --options must be a JSON object: {exc}")
-        return batch_tools.batch_process(args.paths, args.operation, options, args.concurrency)
+            raise SystemExit(
+                f"mct: --options must be a JSON object: {exc}\n"
+                f"     example: --options '{{\"goal\": \"web\"}}'  "
+                f"(on Windows cmd/PowerShell wrap it in double quotes and escape the inner ones)"
+            )
+        return batch_tools.batch_process(_expand(args.paths), args.operation, options, args.concurrency)
     if command == "generate":
         return generate_tools.generate_image_free(
             args.prompt, args.width, args.height, args.seed, out, ow
@@ -292,9 +379,90 @@ def _dispatch(args: argparse.Namespace) -> object:
     raise AssertionError(f"unhandled command {command!r}")  # pragma: no cover
 
 
+def _scalar(value: object) -> str:
+    return json.dumps(value, default=str) if isinstance(value, (dict, list)) else str(value)
+
+
+def _nested(value: object, indent: int) -> list[str]:
+    """Indented lines for a nested dict/list; one fact per line, no JSON blob."""
+    pad = " " * indent
+    lines: list[str] = []
+    if isinstance(value, dict):
+        for key, item in value.items():
+            if isinstance(item, (dict, list)) and item and not (
+                isinstance(item, list) and all(not isinstance(i, (dict, list)) for i in item)
+            ):
+                lines.append(f"{pad}{key}:")
+                lines.extend(_nested(item, indent + 2))
+            elif isinstance(item, list):
+                lines.append(f"{pad}{key}: {', '.join(_scalar(i) for i in item) or '-'}")
+            else:
+                lines.append(f"{pad}{key}: {_scalar(item)}")
+    elif isinstance(value, list):
+        for item in value:
+            if isinstance(item, dict):
+                inner = _nested(item, indent + 2)
+                inner[0] = f"{pad}- " + inner[0].lstrip()
+                lines.extend(inner)
+            else:
+                lines.append(f"{pad}- {_scalar(item)}")
+    return lines
+
+
+def _table(rows: list[list[str]]) -> list[str]:
+    widths = [max(len(row[i]) for row in rows) for i in range(len(rows[0]))]
+    return ["  " + "  ".join(cell.ljust(widths[i]) for i, cell in enumerate(row)).rstrip() for row in rows]
+
+
+def _render_special(result: dict) -> list[str] | None:
+    """Readable text for the three listing commands; None for everything else."""
+    op = result.get("operation")
+    if op == "list_capabilities":
+        tools = result["tools"]
+        ready = sum(1 for t in tools if t["ready"])
+        hosted = sum(1 for t in tools if t["execution"] == "hosted")
+        rows = [["tool", "ready", "network", "needs"]]
+        blocked: list[str] = []
+        for t in tools:
+            needs = []
+            if t["gpu"] != "none":
+                needs.append(f"gpu {t['gpu']}")
+            needs += t["external_binaries"] + [f"{b} (some inputs)" for b in t["conditional_binaries"]]
+            if t["external_service"]:
+                needs.append(t["external_service"])
+            rows.append([t["tool"], "yes" if t["ready"] else "NO", t["network"], ", ".join(needs) or "-"])
+            blocked += [f"  blocked  {t['tool']}: {b}" for b in t["blockers"]]
+            blocked += [f"  limited  {t['tool']}: {b}" for b in t["limitations"]]
+        lines = [f"{len(tools)} tools: {len(tools) - hosted} local, {hosted} hosted; {ready} ready on this machine", ""]
+        lines += _table(rows)
+        if blocked:
+            lines += [""] + blocked
+        lines += ["", "  environment:"] + _nested(result["environment"], 4)
+        lines += ["", "  limits:"] + _nested(result["limits"], 4)
+        lines += [""] + [f"  note: {n}" for n in result.get("notes", [])]
+        return lines
+    if op == "list_background_models":
+        rows = [["model", "weights", "licence", "verified"]]
+        for m in result["models"]:
+            weights = f"{m['weights_mb']} MB" if m.get("weights_mb") else "?"
+            rows.append([m["model"], weights, m["license"], "yes" if m["license_verified"] else "NO"])
+        lines = [f"default model: {result['default']}", ""] + _table(rows)
+        return lines + [""] + [f"  note: {n}" for n in result.get("notes", [])]
+    if op == "list_presets":
+        rows = [["kind", "name", "size"]]
+        for kind in ("image", "video"):
+            for name, size in result[kind].items():
+                rows.append([kind, name, f"{size['width']}x{size['height']}"])
+        return _table(rows) + ["", f"  {result['disclaimer']}", f"  {result['override']}"]
+    return None
+
+
 def _render(result: object, as_json: bool) -> str:
     if as_json or not isinstance(result, dict):
         return json.dumps(result, indent=2, default=str) if not isinstance(result, str) else result
+    special = _render_special(result)
+    if special is not None:
+        return "\n".join(["  execution: local", "  network: none", ""] + special)
     lines = []
     if "output_path" in result:
         lines.append(str(result["output_path"]))
@@ -304,10 +472,10 @@ def _render(result: object, as_json: bool) -> str:
         if isinstance(value, (list, dict)) and not value:
             continue
         if isinstance(value, list) and all(isinstance(v, str) for v in value):
-            for entry in value:
-                lines.append(f"  {key}: {entry}")
+            lines.append(f"  {key}: {', '.join(value)}")
         elif isinstance(value, (dict, list)):
-            lines.append(f"  {key}: {json.dumps(value, default=str)}")
+            lines.append(f"  {key}:")
+            lines.extend(_nested(value, 4))
         else:
             lines.append(f"  {key}: {value}")
     return "\n".join(lines)

@@ -16,6 +16,7 @@ from ..validation import (
     require_positive_int,
     require_positive_number,
     require_timestamp,
+    timestamp_seconds,
 )
 
 logger = get_logger(__name__)
@@ -75,6 +76,14 @@ def video_thumbnail(
     if not info.get("has_video"):
         raise InvalidInputError(f"{source.name} has no video stream to take a frame from.")
     stamp = require_timestamp(timestamp, "timestamp")
+    length = info.get("duration_seconds")
+    if length and timestamp_seconds(stamp) >= float(length):
+        # ffmpeg exits 0 and writes nothing when -ss is past the end; without
+        # this the user saw "reported success but wrote no output".
+        raise InvalidInputError(
+            f"{source.name} is {float(length):.1f} s long, so there is no frame at {stamp}. "
+            f"Pick a time before {float(length):.1f} s."
+        )
 
     destination = manager.resolve_explicit(output_path, overwrite) if output_path else None
     with manager.stage("thumb", "png", destination) as staged:

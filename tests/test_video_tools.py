@@ -185,3 +185,14 @@ def test_ffmpeg_failures_keep_the_log_out_of_the_message(config, tmp_path):
     error = excinfo.value
     if hasattr(error, "message"):
         assert len(error.message) < 400
+
+
+def test_thumbnail_past_the_end_says_how_long_the_video_is(config, video):
+    """ffmpeg exits 0 and writes nothing for a timestamp beyond the end, which
+    surfaced as "reported success but wrote no output"."""
+    length = _duration(video)
+    with pytest.raises(InvalidInputError) as excinfo:
+        video_thumbnail(str(video), "99:00:00")
+    message = excinfo.value.message
+    assert f"{length:.1f} s long" in message and "no frame at 99:00:00" in message
+    assert not list(config.output_dir.glob("*.part-*")) if config.output_dir.exists() else True

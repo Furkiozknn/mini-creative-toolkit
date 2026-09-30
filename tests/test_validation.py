@@ -129,3 +129,12 @@ def test_text_accepts_unicode_and_punctuation():
 def test_text_enforces_a_length_limit():
     with pytest.raises(InvalidInputError):
         require_text("x" * 501, "text", max_length=500)
+
+
+@pytest.mark.parametrize("stamp, seconds", [
+    ("5", 5.0), ("00:00:05", 5.0), ("1:30", 90.0), ("01:02:03.5", 3723.5), ("0.25", 0.25),
+])
+def test_timestamp_seconds(stamp, seconds):
+    from mini_creative_toolkit.validation import timestamp_seconds
+
+    assert timestamp_seconds(require_timestamp(stamp)) == seconds
