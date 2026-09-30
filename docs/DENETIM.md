@@ -21,6 +21,8 @@ Yenilemeden önce `master` (2.0.0, `fb458f5`) üzerinde, bu makinede (Windows 11
 |---|---|---|---|---|---|
 | Önce (`master`, Windows) | 327 | 314 | **10** | 3 | 474 s (7 dk 54 sn) |
 | Sonra (Windows) | 347 | 342 | 0 | 5 | 45 s |
+| Sonra (CI, Linux 3.11/3.12/3.13) | 347 | 347 | 0 | 0 | 49 s (3.12) |
+| Sonra (CI, Windows Server, Python 3.12) | 347 | 342 | 0 | 5 | 76 s |
 
 10 başarısızlığın hepsi testlerin Windows varsayımıydı, araç değil:
 
