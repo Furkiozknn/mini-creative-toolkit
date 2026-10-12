@@ -201,6 +201,7 @@ jobs:
   # the toolkit. This keeps them fixed.
   windows:
     runs-on: windows-latest
+    timeout-minutes: 20
     env:
       UV_PYTHON: "3.12"
     steps:
