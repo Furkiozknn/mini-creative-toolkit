@@ -1,0 +1,4 @@
+# uvx --from git+https://github.com/Furkiozknn/mini-creative-toolkit mct --version
+# tarih: 2026-09-30T03:59:09+03:00
+cold (empty uv cache): 20.77 s, exit 0, output 'mct 2.0.0'
+warm (same cache): 3.26 s, exit 0, output 'mct 2.0.0'

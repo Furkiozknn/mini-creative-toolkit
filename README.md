@@ -1,7 +1,29 @@
 ![mini-creative-toolkit](assets/banner.svg)
 
-<p align="center"><img src="docs/reel/reel.gif" alt="mini-creative-toolkit - 15-second motion reel" width="720"></p>
-<p align="center"><sub><a href="docs/reel/reel.mp4">MP4 version with sound</a></sub></p>
+**Local media tools for MCP clients and the shell: strip GPS from a photo, resize, convert, cut out a background, trim a video. 22 of the 23 tools run on your CPU, and every reply states its own `execution` and `network`.**
+
+```bash
+uvx --from git+https://github.com/Furkiozknn/mini-creative-toolkit mct inspect photo.jpg
+```
+
+Your files stay on the machine: the one hosted tool (`generate_image_free`) is labelled `network: required`, and `remove_background` downloads a model's weights once (`first-run-only`), as does `batch_process` when it runs `remove_background`. The server puts `network: none` in the payload on 20 of its 23 tools. No clone, no API key, no GPU. Needs [uv](https://docs.astral.sh/uv/); ffmpeg only for video and audio. Measured on Windows 11: **21 s** from an empty cache to the first result, 3 s once cached ([`docs/DENETIM.md`](docs/DENETIM.md)).
+
+Use it from Claude Code or any MCP client with one line:
+
+```bash
+claude mcp add --transport stdio mini-creative-toolkit -- uvx --from git+https://github.com/Furkiozknn/mini-creative-toolkit mct serve
+```
+
+![A terminal: mct inspect shows has_exif True, mct strip-metadata rewrites the file, a second inspect shows has_exif False; then a scripted MCP session lists 23 tools and repeats the calls, every reply carrying network none](docs/demo/demo.gif)
+
+<sub>Real commands, real output: the full record is [`docs/demo/komutlar.txt`](docs/demo/komutlar.txt). `photo.jpg` is a synthetic picture with EXIF and GPS tags, not anybody's photo. The last command is an MCP client session over stdio ([`scripts/mcp_probe.py`](scripts/mcp_probe.py)). Regenerate everything with `uv run python scripts/demo-uret.py`.</sub>
+
+| Use it when | Do not use it when |
+| --- | --- |
+| You want resize, convert, strip-metadata, thumbnail, GIF, trim or compress done locally, and want each reply to state that nothing left the machine | You need generative editing or inpainting. The one generative tool, `generate_image_free`, sends your prompt to a third party |
+| You give an agent file access and want every tool to declare what it needs (`list_capabilities`) | You need Real-ESRGAN quality without a discrete GPU. `upscale_image` stalled on integrated graphics; `upscale_image_fast` (FSRCNN) is the CPU path |
+| You have a folder of images: `mct batch photos/*.jpg --operation optimize`, one bad file never loses the batch | You expect a sandbox. It runs with your permissions; set `MCT_ALLOWED_ROOTS` for a model you do not trust |
+| You want the answer to "what can this machine run?" before a job (`mct capabilities`) | You need a platform-certified preset. The built-in sizes are conveniences |
 
 <p align="center">
   <img src="https://img.shields.io/badge/license-MIT-8effc2?style=flat-square" alt="license: MIT">
@@ -12,30 +34,8 @@
   <img src="https://img.shields.io/badge/hosted%20tools-1%20of%2023-ff9f5a?style=flat-square" alt="1 of 23 tools is hosted">
 </p>
 
-![mct inspecting a JPEG and then stripping its metadata: has_exif goes from true to false and every removed key is listed, with execution local and network none on both calls](assets/demo.gif)
-
-<sub>Real output. Every tool prints <code>execution</code> and <code>network</code> in its own payload — that is where the "22 of 23 are local" claim is checked, not in this README.</sub>
-
 <p align="center"><b>Local media operations for MCP clients. Images, video and audio.</b><br>
 CPU-first. No paid APIs. External network access is isolated to one tool and explicitly documented.</p>
-
-<p align="center">
-  <img src="assets/tool-call.svg" alt="One MCP tool call to inspect_media and its response, which reports execution local and network none" width="680">
-</p>
-
-<p align="center"><sub><i>A real call and a real response. <code>"network": "none"</code> is not a claim in this README — the server puts it in the payload, on 20 of its 23 tools. <code>remove_background</code> says <code>"first-run-only"</code> (rembg downloads its weights once), and so does <code>batch_process</code> when that is the operation it runs; <code>generate_image_free</code> says <code>"required"</code>.</i></sub></p>
-
-**Quick start.** With [uv](https://docs.astral.sh/uv/) installed (and ffmpeg for
-the video tools), one command gives Claude Code all 23 tools, no checkout needed:
-
-```bash
-claude mcp add --transport stdio mini-creative-toolkit -- \
-  uvx --from git+https://github.com/Furkiozknn/mini-creative-toolkit mini-creative-toolkit
-```
-
-Then ask: *"Inspect ~/Pictures/photo.jpg, strip its metadata, and fit it to
-1080×1080."* Results land in `output/` under the directory Claude Code runs in.
-Not sure what your machine can run? Ask Claude Code to call `list_capabilities`.
 
 ---
 
@@ -121,7 +121,7 @@ extension claims — and decide from there.
 
 | Tool | Does |
 | --- | --- |
-| `upscale_image_fast` | FSRCNN — a real super-resolution CNN, CPU, sub-second |
+| `upscale_image_fast` | FSRCNN — a real super-resolution CNN, CPU: 0.04 s for a 128×96 icon at 4×, about 3 s for a 1600×1200 photo at 2× |
 | `upscale_image` | Real-ESRGAN via Upscayl — best quality, **needs a discrete GPU** |
 | `upscale_image_auto` | Picks between them and **explains which and why** |
 
@@ -203,27 +203,23 @@ conflating them sends you looking for a problem you do not have:
 
 ## Install
 
-You need [uv](https://docs.astral.sh/uv/) and, for the video and audio tools,
-ffmpeg. There are two ways in; both give Claude Code the same 23 tools.
-
-**Without a checkout.** uv fetches the package from GitHub and starts the
-server; nothing is installed globally:
+Nothing to install for a first try, see the top. To keep `mct` on your PATH:
 
 ```bash
-claude mcp add --transport stdio mini-creative-toolkit -- \
-  uvx --from git+https://github.com/Furkiozknn/mini-creative-toolkit mini-creative-toolkit
+uv tool install git+https://github.com/Furkiozknn/mini-creative-toolkit
+mct --version
 ```
 
-**From a checkout**, which also gives you the `mct` CLI:
+To work on the code, from a checkout:
 
 ```bash
 git clone https://github.com/Furkiozknn/mini-creative-toolkit
 cd mini-creative-toolkit
 uv sync
-uv run mct capabilities          # what this machine can run, and what is missing
+uv run mct capabilities
 ```
 
-`uv sync` installs the package and its five dependencies. The FSRCNN weights
+That installs the package and its five dependencies. The FSRCNN weights
 (~120 KB total) ship inside the package — nothing to download.
 
 **ffmpeg and ffprobe must be on your PATH** for every video and audio tool,
@@ -233,6 +229,8 @@ and for `inspect_media` on non-image files:
 sudo apt-get install ffmpeg     # Debian/Ubuntu
 brew install ffmpeg             # macOS
 ```
+
+On Windows any ffmpeg build on `PATH` works (the WinGet package does).
 
 Everything else works without them. `mct capabilities` will tell you exactly
 which tools are blocked and why.
@@ -256,46 +254,41 @@ variables — and every other tool keeps working. Skip this entirely and use
 
 ## Register as an MCP server
 
-From a checkout, point Claude Code at the console script with an **absolute**
-project path:
+```bash
+claude mcp add --transport stdio mini-creative-toolkit -- uvx --from git+https://github.com/Furkiozknn/mini-creative-toolkit mct serve
+```
+
+From a checkout instead, point Claude Code at the console script with an
+**absolute** project path:
 
 ```bash
 claude mcp add --transport stdio mini-creative-toolkit -- \
   uv run --project /absolute/path/to/mini-creative-toolkit mini-creative-toolkit
 ```
 
-`claude mcp list` should then show `mini-creative-toolkit: ... - ✓ Connected`.
-Pass settings with `-e`, for example
-`claude mcp add -e MCT_ALLOWED_ROOTS=$HOME/media ...` (see
-[Configuration](#configuration)).
-
-Relative paths in tool calls resolve against the directory Claude Code was
-started in. Results land in `MCT_OUTPUT_DIR`: by default `output/` inside the
-checkout, or `output/` under that directory when the server runs via `uvx`.
-
 Older instructions said `uv run --project /path/to/repo toolkit.py`. uv
 resolves `toolkit.py` against the *current* directory, not the project, so that
-form only connects when Claude Code is started inside the repository;
-anywhere else `claude mcp list` reports "Failed to connect". Replace it with the
-command above, or give `toolkit.py` as an absolute path. Other ways to start
-the same server:
+form only connects when Claude Code is started inside the repository; replace
+it with the command above, or give `toolkit.py` as an absolute path. Other ways
+to start the same server:
 
 ```bash
-uv run mct serve
-uv run python -m mini_creative_toolkit
-uv run mini-creative-toolkit     # the console script server.json points uvx at
+mct serve
+python -m mini_creative_toolkit
+mini-creative-toolkit     # the console script server.json points uvx at
 ```
 
-Once a release is on PyPI, the shortest form will be
-`claude mcp add --transport stdio mini-creative-toolkit -- uvx mini-creative-toolkit`.
+To see what a client sees without a client, `uv run python scripts/mcp_probe.py photo.jpg`
+starts the server over stdio, sends `initialize`, `tools/list` and three real
+`tools/call` requests, and checks every tool description for invisible
+characters.
 
 ---
 
 ## CLI
 
 The CLI calls the same functions the MCP server does — there is no second
-implementation of any rule. From a checkout, prefix each command with
-`uv run` (or activate `.venv`).
+implementation of any rule.
 
 ```bash
 mct inspect photo.jpg
@@ -324,6 +317,10 @@ underlying ffmpeg log when something fails, `-o PATH` to choose a destination
 (`--overwrite` to allow replacing an existing file).
 
 Exit codes: `0` success, `1` operation failed, `2` usage error.
+
+Wildcards work on every shell: cmd.exe and PowerShell do not expand `*.jpg`, so `mct batch`
+and `mct contact-sheet` do it themselves (only when no file of that literal name exists).
+`mct batch` takes no `-o`: one path cannot hold many results, use `--output-dir`.
 
 ---
 
@@ -480,6 +477,8 @@ Two rules hold the shape:
 ```bash
 uv run pytest
 ```
+
+382 tests: 382 passed on Linux (Python 3.13, 2026-10-12; CI runs 3.11, 3.12 and 3.13); before the 2.1.0 fixes, 342 of 347 passed and 5 were skipped on Windows 11 (Python 3.14, 45 s), and CI runs a Windows job too. The skips are file names and paths that only exist on POSIX.
 
 Real files, real ffmpeg, real encoders — no mocked image libraries. The
 exception is the hosted generator, which is tested entirely against an

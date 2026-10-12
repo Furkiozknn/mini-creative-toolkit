@@ -71,7 +71,11 @@ def test_no_root_configured_means_no_root_restriction(tmp_path):
     this is an ordinary local tool with the user's own file permissions.
     SECURITY.md says so rather than implying a sandbox that does not exist."""
     config = Config(output_dir=tmp_path / "out")
-    resolved = resolve_input("/etc/hostname", config)
+    elsewhere = tmp_path.parent / f"{tmp_path.name}-elsewhere"
+    elsewhere.mkdir()
+    target = elsewhere / "hostname"
+    target.write_text("not under any configured root")
+    resolved = resolve_input(str(target), config)
     assert resolved.name == "hostname"
 
 
@@ -95,6 +99,8 @@ def test_no_root_configured_means_no_root_restriction(tmp_path):
 def test_awkward_filenames_are_handled_as_data_not_syntax(tmp_path, name):
     """None of these reach a shell - every subprocess call passes an argument
     list - so they must simply work."""
+    if os.name == "nt" and any(c in name for c in '"|*'):
+        pytest.skip("Windows does not allow this character in a file name")
     config = Config(output_dir=tmp_path / "out")
     path = tmp_path / name
     Image.new("RGB", (8, 8), (1, 2, 3)).save(path, format="PNG")

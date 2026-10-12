@@ -30,9 +30,6 @@ secrets.json
 service-account*.json
 *.key
 !*.pub
-# the recorded demo the README shows is committed on purpose
-!assets/demo.gif
-
-# README tanitim videosu - uretilmis ciktilarin aksine depoda kalir
-!docs/reel/reel.gif
-!docs/reel/reel.mp4
+# the recorded terminal demo the README shows is committed on purpose
+# (scripts/demo-uret.py regenerates it; the vertical cut stays out of the repo)
+!docs/demo/demo.gif

@@ -397,7 +397,8 @@ def compare_images(
 @_tool(
     "upscale_image_fast",
     "Upscale an image 2x, 3x or 4x with FSRCNN, a small pretrained super-resolution "
-    "network that runs on CPU in well under a second. Meaningfully sharper edges than "
+    "network that runs on CPU: under a second for an icon-sized image, a few seconds for a "
+    "photo (measured: 1600x1200 at 2x takes about 3 s). Meaningfully sharper edges than "
     "a plain resize. It does NOT hallucinate texture the way Real-ESRGAN does - for "
     "that quality you need upscale_image and a discrete GPU. This is the practical "
     "default on machines without one.",
