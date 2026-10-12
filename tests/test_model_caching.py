@@ -114,3 +114,20 @@ def test_a_failed_session_build_is_not_cached(config, monkeypatch, tmp_path):
     remove_background(str(source))
     assert calls["n"] == 2
     assert background._SESSIONS == {"u2net": "session"}
+
+
+def test_a_bad_output_path_is_refused_before_the_model_runs(config, monkeypatch, tmp_path):
+    """Checked after the removal, an existing output_path cost a model load
+    (17 s cold for u2net) and possibly a weights download, then failed."""
+    from mini_creative_toolkit.engines import background as engine
+    from mini_creative_toolkit.errors import InvalidInputError
+
+    calls = []
+    monkeypatch.setattr(engine, "remove_background", lambda data, model="u2net": calls.append(model) or data)
+    source = tmp_path / "s.png"
+    Image.new("RGB", (8, 8), (1, 2, 3)).save(source)
+    existing = tmp_path / "taken.png"
+    existing.write_bytes(b"keep me")
+    with pytest.raises(InvalidInputError, match="overwrite"):
+        remove_background(str(source), output_path=str(existing))
+    assert calls == []

@@ -6,7 +6,7 @@
 uvx --from git+https://github.com/Furkiozknn/mini-creative-toolkit mct inspect photo.jpg
 ```
 
-Your files stay on the machine: the one hosted tool (`generate_image_free`) is labelled `network: required`, and `remove_background` downloads a model's weights once (`first-run-only`); the other 21 say `network: none`. No clone, no API key, no GPU. Needs [uv](https://docs.astral.sh/uv/); ffmpeg only for video and audio. Measured on Windows 11: **21 s** from an empty cache to the first result, 3 s once cached ([`docs/DENETIM.md`](docs/DENETIM.md)).
+Your files stay on the machine: the one hosted tool (`generate_image_free`) is labelled `network: required`, and `remove_background` downloads a model's weights once (`first-run-only`), as does `batch_process` when it runs `remove_background`. The server puts `network: none` in the payload on 20 of its 23 tools. No clone, no API key, no GPU. Needs [uv](https://docs.astral.sh/uv/); ffmpeg only for video and audio. Measured on Windows 11: **21 s** from an empty cache to the first result, 3 s once cached ([`docs/DENETIM.md`](docs/DENETIM.md)).
 
 Use it from Claude Code or any MCP client with one line:
 
@@ -153,7 +153,7 @@ extension claims — and decide from there.
 
 ## Capability matrix
 
-<img src="assets/tools-grid.svg" alt="All 23 MCP tools grouped by what they use: image, background, upscale, video and audio, inspect and compose, and orchestration - 22 of them never leave this machine, with generate_image_free the one hosted exception" width="100%">
+<img src="assets/tools-grid.svg" alt="All 23 MCP tools grouped by what they use: image, background, upscale, video and audio, inspect and compose, and orchestration - 22 of them run on this machine, with generate_image_free the one hosted exception" width="100%">
 
 Generated from the same table the MCP tool descriptions use — run
 `mct capabilities` for the live version, including what this machine is
@@ -179,14 +179,16 @@ actually missing.
 | `extract_audio` | yes | no | no | `ffmpeg` | yes |
 | `inspect_media` | yes | no | no | `ffprobe` (AV only) | yes |
 | `optimize_media` | yes | no | no | `ffmpeg` (video only) | yes |
-| `batch_process` | yes | no | no | per operation | yes |
+| `batch_process` | yes | first run only (`remove_background` only) | no | per operation | yes |
 | `list_capabilities` | yes | no | no | no | yes |
 | `list_background_models` | yes | no | no | no | yes |
 | `list_presets` | yes | no | no | no | yes |
 | `generate_image_free` | **no** | **required** | no | no | **no** |
 
 "first run only" is not a hedge: rembg downloads a model's ONNX weights the
-first time that model is used, then never again. "per model" means
+first time that model is used, then never again. `batch_process` inherits that
+only when its operation is `remove_background`; its payload reports the
+network need of the operation it actually ran. "per model" means
 `remove_background` is reproducible for a given model but different models
 give different cut-outs.
 
@@ -256,18 +258,24 @@ variables — and every other tool keeps working. Skip this entirely and use
 claude mcp add --transport stdio mini-creative-toolkit -- uvx --from git+https://github.com/Furkiozknn/mini-creative-toolkit mct serve
 ```
 
-From a checkout instead, or if your configuration predates 2.0:
+From a checkout instead, point Claude Code at the console script with an
+**absolute** project path:
 
 ```bash
-claude mcp add --transport stdio mini-creative-toolkit -- uv run --project /path/to/this/repo toolkit.py
+claude mcp add --transport stdio mini-creative-toolkit -- \
+  uv run --project /absolute/path/to/mini-creative-toolkit mini-creative-toolkit
 ```
 
-`toolkit.py` is preserved as a compatibility launcher, so existing
-configurations need no change. The modern equivalents:
+Older instructions said `uv run --project /path/to/repo toolkit.py`. uv
+resolves `toolkit.py` against the *current* directory, not the project, so that
+form only connects when Claude Code is started inside the repository; replace
+it with the command above, or give `toolkit.py` as an absolute path. Other ways
+to start the same server:
 
 ```bash
 mct serve
 python -m mini_creative_toolkit
+mini-creative-toolkit     # the console script server.json points uvx at
 ```
 
 To see what a client sees without a client, `uv run python scripts/mcp_probe.py photo.jpg`
@@ -364,7 +372,7 @@ limit your real workload legitimately exceeds.
 | `MCT_ALLOWED_ROOTS` | *(unset)* | Restrict file access to these directories |
 | `MCT_MAX_INPUT_MB` | 512 | Largest input file |
 | `MCT_MAX_OUTPUT_MB` | 1024 | Largest output file |
-| `MCT_MAX_IMAGE_PIXELS` | 80000000 | Decompression-bomb guard |
+| `MCT_MAX_IMAGE_PIXELS` | 80000000 | Largest image read (decompression-bomb guard) or produced (resize, upscale, contact sheet) |
 | `MCT_MAX_VIDEO_DURATION` | 3600 | Longest video, in seconds |
 | `MCT_MAX_VIDEO_WIDTH` / `_HEIGHT` | 7680 | Largest video dimensions |
 | `MCT_MAX_BATCH_ITEMS` | 200 | Largest batch |
@@ -413,9 +421,18 @@ that. What it *does* guarantee:
 - **Paths are resolved before they are checked.** `resolve()` collapses `..`
   and follows symlinks first, so neither traversal nor a planted symlink can
   escape a configured allowed root.
-- **Nothing overwrites your input.** Writes are staged to a temporary sibling
-  and renamed into place only on success, so a crashed ffmpeg leaves no
-  truncated file and no orphaned GIF palette.
+- **Nothing overwrites an existing file unless you say so.** Writes are staged
+  to a temporary sibling and committed only on success, so a crashed ffmpeg
+  leaves no truncated file and no orphaned GIF palette; without
+  `overwrite=true` the commit refuses a name that already exists, even one that
+  appeared mid-run. Your input is replaced only if you name it as `output_path`
+  *and* pass `overwrite=true`.
+- **Dependencies stay quiet too.** onnxruntime (under rembg) ships with
+  telemetry on; the package sets `ORT_DISABLE_TELEMETRY=1` before it can load,
+  so the `network: none` in a payload also covers what a dependency would
+  have sent.
+- **Sizes are bounded both ways.** `MCT_MAX_IMAGE_PIXELS` applies to images
+  read *and* to the image a resize, upscale or contact sheet would create.
 - **The hosted response is never trusted.** Status, content type, a streaming
   byte budget, and an actual decode — an HTML error page served with HTTP 200
   is refused rather than written out as a `.jpg`.
@@ -461,7 +478,7 @@ Two rules hold the shape:
 uv run pytest
 ```
 
-347 tests: 347 passed on Linux (Python 3.11, 3.12, 3.13, CI); 342 passed and 5 skipped on Windows 11 (Python 3.14, 45 s), and CI runs a Windows job too. The skips are file names and paths that only exist on POSIX.
+382 tests: 382 passed on Linux (Python 3.13, 2026-10-12; CI runs 3.11, 3.12 and 3.13); before the 2.1.0 fixes, 342 of 347 passed and 5 were skipped on Windows 11 (Python 3.14, 45 s), and CI runs a Windows job too. The skips are file names and paths that only exist on POSIX.
 
 Real files, real ffmpeg, real encoders — no mocked image libraries. The
 exception is the hosted generator, which is tested entirely against an

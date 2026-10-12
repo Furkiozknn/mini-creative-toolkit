@@ -156,6 +156,45 @@ def test_the_readme_capability_matrix_matches_the_declared_capabilities():
         assert f"`{name}`" in readme, f"{name} is not mentioned in README.md"
 
 
+def test_the_readme_matrix_network_column_matches_each_tool():
+    """Mentioning every tool was not enough: batch_process sat in the matrix
+    with Network "no" while it could download rembg weights. Each row's
+    Network cell is now checked against that tool's declared need."""
+    from mini_creative_toolkit.capabilities import CAPABILITIES, NetworkNeed
+
+    rows = {}
+    for line in _read(REPO_ROOT / "README.md").splitlines():
+        match = re.match(r"\| `(\w+)` \| [^|]+ \| ([^|]+) \|", line)
+        if match and match.group(1) in CAPABILITIES:
+            rows[match.group(1)] = match.group(2).strip().strip("*")
+    assert set(rows) == set(CAPABILITIES)
+    expected = {
+        NetworkNeed.NONE: "no",
+        NetworkNeed.FIRST_RUN_ONLY: "first run only",
+        NetworkNeed.REQUIRED: "required",
+    }
+    for name, cell in rows.items():
+        assert cell.startswith(expected[CAPABILITIES[name].network]), (name, cell)
+
+
+def test_server_json_fits_the_mcp_registry_schema_limits():
+    """The registry's server.schema.json (2025-12-11) caps ``description`` at
+    100 characters; the 251-character one this file used to carry would have
+    been rejected on publish. Checked here without fetching the schema."""
+    import json
+
+    server = json.loads(_read(REPO_ROOT / "server.json"))
+    assert 1 <= len(server["description"]) <= 100, len(server["description"])
+    assert server["name"].startswith("io.github.Furkiozknn/")
+    readme = _read(REPO_ROOT / "README.md")
+    assert f"<!-- mcp-name: {server['name']} -->" in readme
+    import tomllib
+
+    version = tomllib.loads(_read(REPO_ROOT / "pyproject.toml"))["project"]["version"]
+    assert server["version"] == version
+    assert all(p["version"] == version for p in server["packages"])
+
+
 def test_the_readme_discloses_the_hosted_tool_rather_than_claiming_to_be_offline():
     """Asserted positively on purpose. A blacklist of overclaim phrases matches
     the README's own *denial* of them ("there is no global 'CPU-only, no
@@ -208,3 +247,80 @@ def test_the_bundled_model_weights_ship_inside_the_package():
 @pytest.mark.parametrize("path", PY_FILES, ids=lambda p: p.name)
 def test_every_module_compiles(path):
     compile(_read(path), str(path), "exec")
+
+
+def test_the_registry_entry_can_actually_be_launched():
+    """server.json tells MCP clients to run ``uvx <identifier>``. uvx runs the
+    console script *named* like the package, so without one the registry
+    entry installs fine and then fails with "executable not provided"."""
+    import json
+    import tomllib
+
+    server = json.loads(_read(REPO_ROOT / "server.json"))
+    scripts = tomllib.loads(_read(REPO_ROOT / "pyproject.toml"))["project"]["scripts"]
+    for package in server["packages"]:
+        if package.get("runtimeHint") != "uvx":
+            continue
+        identifier = package["identifier"]
+        assert scripts.get(identifier) == "mini_creative_toolkit.server:main", (
+            f"`uvx {identifier}` needs a console script called {identifier!r} "
+            f"that starts the stdio server; pyproject declares {sorted(scripts)}"
+        )
+
+
+def test_the_published_network_count_matches_the_capability_table():
+    """"N of them report network: none" is repeated in server.json, the README
+    and the project metadata. It is only true if N is what the table says -
+    remove_background declares first-run-only, because rembg downloads its
+    weights the first time a model is used."""
+    import json
+
+    from mini_creative_toolkit.capabilities import CAPABILITIES, NetworkNeed
+
+    offline = sum(1 for c in CAPABILITIES.values() if c.network is NetworkNeed.NONE)
+    total = len(CAPABILITIES)
+    description = json.loads(_read(REPO_ROOT / "server.json"))["description"]
+    assert f"{offline} never touch the network" in description, description
+    assert f"{total} " in description, description
+    readme = _read(REPO_ROOT / "README.md")
+    assert f"on {offline} of its {total} tools" in readme
+    summary = json.loads(_read(REPO_ROOT / "project-meta.json"))["summary"]
+    assert f"{offline} of them report" in summary, summary
+
+
+def test_readme_registration_commands_do_not_depend_on_the_current_directory():
+    """`claude mcp add ... -- uv run --project /repo toolkit.py` was the
+    documented command, and it only connected when Claude Code was started
+    inside the repository: uv resolves a script *file* against the current
+    directory. Whatever follows `uv run --project <path>` must be a console
+    script the package declares."""
+    import tomllib
+
+    scripts = set(tomllib.loads(_read(REPO_ROOT / "pyproject.toml"))["project"]["scripts"])
+    readme = _read(REPO_ROOT / "README.md").replace("\\\n", " ")
+    commands = [line for line in readme.splitlines() if line.lstrip().startswith("claude mcp add")]
+    assert commands, "README no longer shows a claude mcp add command"
+    for command in commands:
+        words = command.split()
+        if "--project" in words:
+            target = words[words.index("--project") + 2]
+            assert target in scripts, command
+        if "--from" in words:
+            assert words[words.index("--from") + 2] in scripts, command
+        assert not any(w.endswith(".py") for w in words), command
+
+
+def test_every_published_test_count_agrees():
+    """The profile site's generator warned "326 vs 327": project-meta.json's
+    summary and tests.count had drifted apart. Summary, tests.count,
+    and tests.source must state the same number (whether that number is
+    still current is checked by running the suite, not here). The banner
+    comes from the shared template and must carry no count at all, so it
+    can never be the one that drifts."""
+    import json
+
+    meta = json.loads(_read(REPO_ROOT / "project-meta.json"))
+    count = meta["tests"]["count"]
+    assert re.search(rf"\b{count} tests\.", meta["summary"]), meta["summary"]
+    assert meta["tests"]["source"] == f"`{count} passed`"
+    assert not re.search(r"\d+ tests?\b", _read(REPO_ROOT / "assets" / "banner.svg"))

@@ -91,6 +91,7 @@ def _optimize_image(source, info, goal, max_width, max_height, preset, output_pa
             target = images.fit_within(
                 original_size, max_width or original_size[0], max_height or original_size[1]
             )
+            images.check_output_pixels(*target, "The optimised image", config)
             if target != original_size:
                 img = img.resize(target, images.Image.LANCZOS)
                 operations.append(f"resize {original_size[0]}x{original_size[1]} -> {target[0]}x{target[1]}")

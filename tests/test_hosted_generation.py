@@ -235,3 +235,21 @@ def test_the_prompt_is_not_logged(config, caplog):
         generate_image_free(secret, 64, 64, client=_client(handler))
     assert secret not in caplog.text
     assert "Pollinations.ai" in caplog.text
+
+
+def test_a_bad_output_path_is_refused_before_the_prompt_leaves_the_machine(config, tmp_path):
+    """The destination used to be validated only after the download. A typo'd
+    or existing output_path then failed *after* the prompt had already been
+    sent to a third party."""
+    existing = tmp_path / "taken.png"
+    existing.write_bytes(b"keep me")
+    requests = []
+
+    def handler(request):
+        requests.append(request)
+        return httpx.Response(200, content=_png_bytes(), headers={"content-type": "image/png"})
+
+    with pytest.raises(InvalidInputError, match="overwrite"):
+        generate_image_free("secret plan", 64, 64, output_path=str(existing), client=_client(handler))
+    assert requests == []
+    assert existing.read_bytes() == b"keep me"

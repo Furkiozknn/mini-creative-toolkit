@@ -33,10 +33,13 @@ def generate_image_free(
     if seed is not None:
         seed = require_positive_int(seed, "seed", maximum=2**31 - 1)
 
+    # Validated before the request: an unusable output_path must fail while
+    # the prompt is still on this machine, not after it has been sent.
+    destination = manager.resolve_explicit(output_path, overwrite) if output_path else None
+
     body, detected = pollinations.fetch_image(prompt, width, height, seed, config, client)
     ext = EXTENSION_FOR.get(detected, "jpg")
 
-    destination = manager.resolve_explicit(output_path, overwrite) if output_path else None
     with manager.stage("generated", ext, destination) as staged:
         pollinations.save_image(body, staged.tmp)
 
