@@ -210,6 +210,19 @@ can decide what needs a confirmation prompt:
   `output_path` writes a fresh file each time.
 - `openWorldHint`: the network column above is not "no".
 
+**Inline previews.** When a tool writes an image, the MCP reply carries:
+
+- the same JSON text and `structuredContent` as before;
+- a **thumbnail** as MCP image content: at most 512 px on the long side, PNG
+  when the image has transparency, JPEG otherwise, first frame of a GIF;
+- a `resource_link` to the full-size file.
+
+A client, and the model, can check a resize, a cut-out or a watermark without
+opening a file on the server's disk. The thumbnail is a re-encoded copy, so the
+output file is never touched, and an image that cannot be previewed simply gets
+no preview. `MCT_INLINE_PREVIEWS=0` switches previews off. The CLI and direct
+Python calls are unchanged.
+
 ---
 
 ## Install
