@@ -17,10 +17,11 @@ from typing import Annotated
 
 from mcp.server import MCPServer
 from mcp.server.mcpserver.exceptions import ToolError
-from mcp.types import ToolAnnotations
+import pydantic_core
+from mcp.types import CallToolResult, TextContent, ToolAnnotations
 from pydantic import Field
 
-from . import __version__
+from . import __version__, previews
 from .capabilities import CAPABILITIES, NetworkNeed
 from .config import get_config
 from .errors import ToolkitError
@@ -148,6 +149,25 @@ def describe(name: str, body: str) -> str:
     return f"{body.strip()}\n\n[{footer}]{notes}"
 
 
+def _with_preview(result, wrapped_output: bool):
+    """The tool's own result, plus a thumbnail and a link when it made an image.
+
+    Without an image (inspect, video, audio, a legacy string result, previews
+    switched off) the result is returned untouched and the SDK converts it
+    exactly as before. With one, the reply carries the same JSON text and the
+    same structuredContent the SDK would have produced, followed by the
+    preview and a resource_link to the full-size file."""
+    path = previews.output_image(result) if previews.enabled() else None
+    image = previews.thumbnail(path) if path is not None else None
+    if image is None:
+        return result
+    text = pydantic_core.to_json(result, fallback=str, indent=2).decode()
+    return CallToolResult(
+        content=[TextContent(type="text", text=text), image, previews.link(path)],
+        structured_content={"result": result} if wrapped_output else None,
+    )
+
+
 def _tool(name: str, body: str):
     """Register a tool, translating this project's errors into MCP's.
 
@@ -170,6 +190,10 @@ def _tool(name: str, body: str):
             annotations=_annotations(name, accepts_overwrite),
         )
 
+        # `dict | str` tools publish an outputSchema that wraps the dict as
+        # {"result": ...}; a CallToolResult built here has to match it.
+        wrapped_output = "str" in str(inspect.signature(func).return_annotation)
+
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
             try:
@@ -177,7 +201,15 @@ def _tool(name: str, body: str):
             except ToolkitError as exc:
                 raise ToolError(exc.describe(get_config().verbose)) from exc
 
-        return register(wrapper)
+        # Only the MCP registration gets the preview: the module-level
+        # function (used in-process and by the tests) keeps returning the
+        # plain dict, exactly as before.
+        @functools.wraps(func)
+        def with_preview(*args, **kwargs):
+            return _with_preview(wrapper(*args, **kwargs), wrapped_output)
+
+        register(with_preview)
+        return wrapper
 
     return decorator
 

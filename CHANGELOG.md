@@ -24,6 +24,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   by every nested open. Covered by `tests/test_ffmpeg_protocols.py`, which runs
   the real binaries against a loopback listener and skips without ffmpeg.
 
+
 ### Added
 
 - Complete MCP behaviour hints and titles on all 23 tools, still derived from
@@ -31,6 +32,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `overwrite` (so `batch_process`, which never overwrites, is false),
   `idempotentHint` is true for the read-only tools, and every tool has a human
   `title`. Tests in `tests/test_annotations_complete.py`.
+
+
+- Inline previews over MCP: a tool that writes an image now also returns a
+  thumbnail (≤512 px, PNG with alpha, else JPEG) as image content and a
+  `resource_link` to the full-size file, next to the unchanged JSON text and
+  `structuredContent` (`mini_creative_toolkit/previews.py`). The output file
+  is never modified; `MCT_INLINE_PREVIEWS=0` turns it off; CLI and direct
+  calls are unchanged. Tests in `tests/test_previews.py`.
 
 ## [2.1.0] - 2026-09-25
 
