@@ -505,7 +505,7 @@ Two rules hold the shape:
 uv run pytest
 ```
 
-382 tests: 382 passed on Linux (Python 3.13, 2026-10-12; CI runs 3.11, 3.12 and 3.13); before the 2.1.0 fixes, 342 of 347 passed and 5 were skipped on Windows 11 (Python 3.14, 45 s), and CI runs a Windows job too. The skips are file names and paths that only exist on POSIX.
+405 tests: 405 passed on Linux (Python 3.11, 3.12 and 3.13 in CI, 2026-10-19); before the 2.1.0 fixes, 342 of 347 passed and 5 were skipped on Windows 11 (Python 3.14, 45 s), and CI runs a Windows job too. The skips are file names and paths that only exist on POSIX.
 
 Real files, real ffmpeg, real encoders — no mocked image libraries. The
 exception is the hosted generator, which is tested entirely against an
