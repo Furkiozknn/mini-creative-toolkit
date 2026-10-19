@@ -407,7 +407,10 @@ limit your real workload legitimately exceeds.
 | `MCT_SUBPROCESS_TIMEOUT` | 900 | ffmpeg / Upscayl timeout, in seconds |
 | `MCT_LOG_LEVEL` | `normal` | `quiet`, `normal` or `verbose` |
 | `MCT_LEGACY_STRING_RESULTS` | `false` | Return a bare path string, as before 2.0 |
-| `MCT_PRESETS_IMAGE_<NAME>` | — | Override a preset, e.g. `1200x1200` |
+| `MCT_CACHE_MODELS` | `true` | Keep rembg sessions and FSRCNN networks in memory between calls; `0` frees the memory |
+| `MCT_INLINE_PREVIEWS` | `1` | Attach a 512 px preview to image results; `0` switches previews off |
+| `MCT_PRESETS_IMAGE_<NAME>` / `MCT_PRESETS_VIDEO_<NAME>` | — | Override a preset, e.g. `1200x1200` |
+| `MCT_FORCE_GPU` / `MCT_FORCE_NO_GPU` | *(unset)* | Skip discrete-GPU detection (which only decides what `upscale_image_auto` picks) |
 | `UPSCAYL_BIN_PATH` / `UPSCAYL_MODELS_PATH` | *(unset)* | Local Upscayl install |
 
 A bad value fails loudly at startup with a message naming the variable, and
