@@ -12,14 +12,16 @@ away from the declared requirements.
 from __future__ import annotations
 
 import functools
+import inspect
 from typing import Annotated
 
 from mcp.server import MCPServer
 from mcp.server.mcpserver.exceptions import ToolError
-from mcp.types import ToolAnnotations
+import pydantic_core
+from mcp.types import CallToolResult, TextContent, ToolAnnotations
 from pydantic import Field
 
-from . import __version__
+from . import __version__, previews
 from .capabilities import CAPABILITIES, NetworkNeed
 from .config import get_config
 from .errors import ToolkitError
@@ -84,11 +86,55 @@ Timestamp = Annotated[
 ]
 
 
-def _annotations(name: str) -> ToolAnnotations:
-    """MCP tool hints, derived from the capability table like the footer."""
+#: Human-readable tool titles (MCP `title`), shown by clients instead of the
+#: snake_case name. A test checks every registered tool has one.
+TITLES: dict[str, str] = {
+    "list_capabilities": "List capabilities",
+    "list_background_models": "List background-removal models",
+    "list_presets": "List size presets",
+    "inspect_media": "Inspect a media file",
+    "resize_image": "Resize an image",
+    "convert_format": "Convert an image format",
+    "strip_metadata": "Strip image metadata (EXIF/GPS)",
+    "add_watermark": "Add a text watermark",
+    "remove_background": "Remove the background",
+    "create_contact_sheet": "Create a contact sheet",
+    "compare_images": "Compare two images",
+    "upscale_image_fast": "Upscale an image (FSRCNN, CPU)",
+    "upscale_image": "Upscale an image (Real-ESRGAN, GPU)",
+    "upscale_image_auto": "Upscale an image (best available)",
+    "video_thumbnail": "Extract a video frame",
+    "video_to_gif": "Convert video to GIF",
+    "video_trim": "Trim a video",
+    "video_resize": "Resize a video",
+    "video_compress": "Compress a video",
+    "extract_audio": "Extract the audio track",
+    "optimize_media": "Optimize a media file",
+    "batch_process": "Batch-process files",
+    "generate_image_free": "Generate an image (Pollinations.ai)",
+}
+
+
+def _annotations(name: str, accepts_overwrite: bool = False) -> ToolAnnotations:
+    """MCP tool hints, derived from the capability table like the footer.
+
+    - readOnlyHint: the tool writes no file.
+    - destructiveHint (only meaningful for writers): true exactly when the
+      tool takes ``overwrite`` - then a caller can ask it to replace an
+      existing file. A writer without that parameter (batch_process) only
+      ever creates new, never-colliding files, so it is not destructive.
+    - idempotentHint: read-only tools are; writers are not, because a call
+      without output_path writes a fresh file every time.
+    - openWorldHint: the tool can reach the network (hosted, or a first-run
+      model download).
+    """
     cap = CAPABILITIES[name]
+    writes = cap.writes_files
     return ToolAnnotations(
-        read_only_hint=not cap.writes_files,
+        title=TITLES.get(name),
+        read_only_hint=not writes,
+        destructive_hint=accepts_overwrite if writes else None,
+        idempotent_hint=not writes,
         open_world_hint=cap.network is not NetworkNeed.NONE,
     )
 
@@ -101,6 +147,25 @@ def describe(name: str, body: str) -> str:
     footer = cap.description_footer()
     notes = "".join(f"\n{note}" for note in cap.notes)
     return f"{body.strip()}\n\n[{footer}]{notes}"
+
+
+def _with_preview(result, wrapped_output: bool):
+    """The tool's own result, plus a thumbnail and a link when it made an image.
+
+    Without an image (inspect, video, audio, a legacy string result, previews
+    switched off) the result is returned untouched and the SDK converts it
+    exactly as before. With one, the reply carries the same JSON text and the
+    same structuredContent the SDK would have produced, followed by the
+    preview and a resource_link to the full-size file."""
+    path = previews.output_image(result) if previews.enabled() else None
+    image = previews.thumbnail(path) if path is not None else None
+    if image is None:
+        return result
+    text = pydantic_core.to_json(result, fallback=str, indent=2).decode()
+    return CallToolResult(
+        content=[TextContent(type="text", text=text), image, previews.link(path)],
+        structured_content={"result": result} if wrapped_output else None,
+    )
 
 
 def _tool(name: str, body: str):
@@ -116,9 +181,19 @@ def _tool(name: str, body: str):
     A genuinely unexpected exception is deliberately *not* translated - it
     keeps the SDK's default masking and full server-side traceback.
     """
-    register = mcp.tool(name=name, description=describe(name, body), annotations=_annotations(name))
-
     def decorator(func):
+        accepts_overwrite = "overwrite" in inspect.signature(func).parameters
+        register = mcp.tool(
+            name=name,
+            title=TITLES.get(name),
+            description=describe(name, body),
+            annotations=_annotations(name, accepts_overwrite),
+        )
+
+        # `dict | str` tools publish an outputSchema that wraps the dict as
+        # {"result": ...}; a CallToolResult built here has to match it.
+        wrapped_output = "str" in str(inspect.signature(func).return_annotation)
+
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
             try:
@@ -126,7 +201,15 @@ def _tool(name: str, body: str):
             except ToolkitError as exc:
                 raise ToolError(exc.describe(get_config().verbose)) from exc
 
-        return register(wrapper)
+        # Only the MCP registration gets the preview: the module-level
+        # function (used in-process and by the tests) keeps returning the
+        # plain dict, exactly as before.
+        @functools.wraps(func)
+        def with_preview(*args, **kwargs):
+            return _with_preview(wrapper(*args, **kwargs), wrapped_output)
+
+        register(with_preview)
+        return wrapper
 
     return decorator
 

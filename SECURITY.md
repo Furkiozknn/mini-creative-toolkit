@@ -69,6 +69,14 @@ it as an option instead of as data. Two things prevent it:
 Rejected values are rejected, never sanitised. Quietly rewriting `-ss` into
 something harmless would hide the attempt.
 
+**Inputs may only use the `file` protocol.** Every `-i` given to ffmpeg, and
+the input given to ffprobe, is preceded by `-protocol_whitelist file`. A
+playlist or concat list names other inputs, and ffmpeg opens them with
+whatever protocol they spell; the whitelist is inherited by those nested
+opens, so a hostile `.m3u8` cannot make ffprobe or ffmpeg reach `http:`,
+`tcp:` or `pipe:` - not even during the probe that runs before the playlist
+is recognised and refused (see *Path handling*, step 6).
+
 Every subprocess has a timeout (`MCT_SUBPROCESS_TIMEOUT`, default 900s), so a
 pathological input cannot hang the server forever.
 

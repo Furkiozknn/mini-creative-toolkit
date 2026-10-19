@@ -199,6 +199,30 @@ conflating them sends you looking for a problem you do not have:
 - **limitations** — the tool runs, on fewer inputs. `inspect_media` without
   ffprobe still describes every image; it just cannot open a video.
 
+The same table drives each tool's MCP behaviour hints and title, so a client
+can decide what needs a confirmation prompt:
+
+- `readOnlyHint`: the tool writes no file.
+- `destructiveHint`: true exactly when the tool takes `overwrite`, because then
+  a caller can ask it to replace an existing file. `batch_process` has no such
+  parameter and only creates new, never-colliding files, so it is false.
+- `idempotentHint`: true for the read-only tools only. A writer called without
+  `output_path` writes a fresh file each time.
+- `openWorldHint`: the network column above is not "no".
+
+**Inline previews.** When a tool writes an image, the MCP reply carries:
+
+- the same JSON text and `structuredContent` as before;
+- a **thumbnail** as MCP image content: at most 512 px on the long side, PNG
+  when the image has transparency, JPEG otherwise, first frame of a GIF;
+- a `resource_link` to the full-size file.
+
+A client, and the model, can check a resize, a cut-out or a watermark without
+opening a file on the server's disk. The thumbnail is a re-encoded copy, so the
+output file is never touched, and an image that cannot be previewed simply gets
+no preview. `MCT_INLINE_PREVIEWS=0` switches previews off. The CLI and direct
+Python calls are unchanged.
+
 ---
 
 ## Install
