@@ -11,6 +11,14 @@ Two rules, enforced structurally rather than by convention:
    through ``validation`` first, which constrains them to shapes that cannot
    start with ``-``.
 
+3. Every input is opened with ``-protocol_whitelist file``. An input file
+   can name *other* inputs - an HLS playlist lists segment URLs, a concat
+   list lists files - and ffmpeg opens those itself, with whatever protocol
+   they spell (``http:``, ``tcp:``, ``pipe:0``, which here is the JSON-RPC
+   channel). The whitelist is inherited by every nested open, so a hostile
+   playlist cannot make a ``network: none`` tool touch the network, even in
+   the ffprobe call that runs *before* ``media_info`` gets to reject it.
+
 Everything else here is about failure: a timeout so a malformed input cannot
 hang the server forever, and a stderr tail kept as ``detail`` so the caller
 gets one useful sentence instead of forty kilobytes of ffmpeg banner.
@@ -33,6 +41,10 @@ logger = get_logger(__name__)
 #: How much of ffmpeg's stderr to keep for diagnostics. The banner alone is
 #: over a kilobyte, and the actual error is always at the end.
 STDERR_TAIL = 2000
+
+#: The only protocol an input - or anything an input refers to - may use.
+#: Every tool reads local files; none of them reads a URL or a pipe.
+PROTOCOL_WHITELIST = "file"
 
 
 def find(binary: str) -> str:
@@ -61,6 +73,21 @@ def _check_args(args: Sequence[str]) -> list[str]:
     return out
 
 
+def _restrict_inputs(args: list[str]) -> list[str]:
+    """Put ``-protocol_whitelist file`` in front of every ``-i``.
+
+    It is a per-input option in ffmpeg, so one copy at the start of the
+    command would cover the first input only; ``video_to_gif`` has two.
+    No value can be ``-i`` itself: ``validation`` forbids a leading dash.
+    """
+    out: list[str] = []
+    for arg in args:
+        if arg == "-i":
+            out += ["-protocol_whitelist", PROTOCOL_WHITELIST]
+        out.append(arg)
+    return out
+
+
 def run_ffmpeg(args: Sequence[str], config: Config | None = None, what: str = "operation") -> str:
     """Run ffmpeg with ``-y -nostdin`` and the given argument list.
 
@@ -70,7 +97,7 @@ def run_ffmpeg(args: Sequence[str], config: Config | None = None, what: str = "o
     """
     config = config or get_config()
     binary = find("ffmpeg")
-    command = [binary, "-y", "-nostdin", "-loglevel", "error", *_check_args(args)]
+    command = [binary, "-y", "-nostdin", "-loglevel", "error", *_restrict_inputs(_check_args(args))]
     logger.debug("ffmpeg %s: %s", what, " ".join(command[1:]))
     try:
         proc = subprocess.run(
@@ -101,7 +128,8 @@ def probe(path: Path, config: Config | None = None) -> dict:
     binary = find("ffprobe")
     command = [
         binary, "-v", "error", "-print_format", "json",
-        "-show_format", "-show_streams", str(path),
+        "-show_format", "-show_streams",
+        "-protocol_whitelist", PROTOCOL_WHITELIST, str(path),
     ]
     try:
         proc = subprocess.run(
