@@ -36,7 +36,7 @@
     "python",
     "video-processing"
   ],
-  "summary": "23 CPU-first media tools as an MCP server and CLI: background removal, EXIF/GPS stripping, resize, GIFs, video trim. 20 of them report \"network\": \"none\" in their own reply. No GPU required. 382 tests.",
+  "summary": "23 CPU-first media tools as an MCP server and CLI: background removal, EXIF/GPS stripping, resize, GIFs, video trim. 20 of them report \"network\": \"none\" in their own reply. No GPU required. 405 tests.",
   "key_features": [
     "23 CPU-first media tools behind one MCP server: background removal, EXIF/GPS stripping, resize, thumbnails, GIFs, video trim",
     "20 of them report \"network\": \"none\" in their own response payload rather than in a README (remove_background, alone or inside batch_process, fetches its model weights once)",
