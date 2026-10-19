@@ -24,6 +24,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   by every nested open. Covered by `tests/test_ffmpeg_protocols.py`, which runs
   the real binaries against a loopback listener and skips without ffmpeg.
 
+### Added
+
+- Complete MCP behaviour hints and titles on all 23 tools, still derived from
+  the capability table: `destructiveHint` is true exactly when a writer takes
+  `overwrite` (so `batch_process`, which never overwrites, is false),
+  `idempotentHint` is true for the read-only tools, and every tool has a human
+  `title`. Tests in `tests/test_annotations_complete.py`.
+
 ## [2.1.0] - 2026-09-25
 
 The first version meant to be published: `server.json` now passes the MCP
