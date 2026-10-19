@@ -14,6 +14,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+
+- ffmpeg and ffprobe now open every input with `-protocol_whitelist file`.
+  A hostile `.m3u8` or concat list inside an allowed root could name
+  `http://` (or `pipe:0`, the JSON-RPC stdin) segments, and ffprobe followed
+  them while classifying the file, before the playlist check refused it, so a
+  tool reporting `network: none` could connect out. The whitelist is inherited
+  by every nested open. Covered by `tests/test_ffmpeg_protocols.py`, which runs
+  the real binaries against a loopback listener and skips without ffmpeg.
+
 ### Added
 
 - Complete MCP behaviour hints and titles on all 23 tools, still derived from
